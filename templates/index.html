@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Game</title>
+    <style>
+        #chessboard {
+            display: grid;
+            grid-template-columns: repeat(8, 40px);
+            grid-template-rows: repeat(8, 40px);
+            margin: 20px auto;
+        }
+        .square {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        .white { background-color: #f0d9b5; }
+        .black { background-color: #b58863; }
+        #captured-white, #captured-black {
+            margin: 10px auto;
+            text-align: center;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div id="chessboard"></div>
+    <div id="captured-white">Captured White: <span id="captured-white-list"></span></div>
+    <div id="captured-black">Captured Black: <span id="captured-black-list"></span></div>
+    <script>
+        const board = document.getElementById('chessboard');
+        const capturedWhite = document.getElementById('captured-white-list');
+        const capturedBlack = document.getElementById('captured-black-list');
+        let gameState = {};
+
+        function createBoard() {
+            for (let i = 0; i < 64; i++) {
+                const square = document.createElement('div');
+                square.classList.add('square');
+                if ((Math.floor(i / 8) + i % 8) % 2 === 0) {
+                    square.classList.add('white');
+                } else {
+                    square.classList.add('black');
+                }
+                square.dataset.index = i;
+                square.addEventListener('click', () => handleSquareClick(i));
+                board.appendChild(square);
+            }
+        }
+
+        function handleSquareClick(index) {
+            const row = Math.floor(index / 8);
+            const col = index % 8;
+            fetch('/select', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ x: col, y: row })
+            })
+            .then(response => response.json())
+            .then(data => {
+                gameState = data;
+                updateBoard();
+            })
+            .catch(error => {
+                console.error('Error selecting square:', error);
+            });
+        }
+
+        function movePiece(index) {
+            const row = Math.floor(index / 8);
+            const col = index % 8;
+            fetch('/move', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ x: col, y: row })
+            })
+            .then(response => response.json())
+            .then(data => {
+                gameState = data;
+                updateBoard();
+            })
+            .catch(error => {
+                console.error('Error moving piece:', error);
+            });
+        }
+
+        function updateBoard() {
+            const squares = document.querySelectorAll('.square');
+            squares.forEach(square => {
+                square.innerHTML = '';
+                const index = parseInt(square.dataset.index);
+                const row = Math.floor(index / 8);
+                const col = index % 8;
+                const position = [col, row];
+                const whiteIndex = gameState.white_locations.findIndex(loc => loc[0] === col && loc[1] === row);
+                const blackIndex = gameState.black_locations.findIndex(loc => loc[0] === col && loc[1] === row);
+
+                if (whiteIndex !== -1) {
+                    square.textContent = gameState.white_pieces[whiteIndex];
+                } else if (blackIndex !== -1) {
+                    square.textContent = gameState.black_pieces[blackIndex];
+                }
+
+                if (gameState.valid_moves.some(move => move[0] === col && move[1] === row)) {
+                    square.style.backgroundColor = 'lightgreen';
+                } else {
+                    square.style.backgroundColor = (Math.floor(index / 8) + index % 8) % 2 === 0 ? '#f0d9b5' : '#b58863';
+                }
+            });
+
+            capturedWhite.textContent = gameState.captured_pieces_white.join(', ');
+            capturedBlack.textContent = gameState.captured_pieces_black.join(', ');
+        }
+
+        function resetBoard() {
+            fetch('/reset', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                gameState = data;
+                updateBoard();
+            })
+            .catch(error => {
+                console.error('Error resetting board:', error);
+            });
+        }
+
+        window.onload = () => {
+            createBoard();
+            resetBoard();
+        };
+    </script>
+</body>
+</html>
