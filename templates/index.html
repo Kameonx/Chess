@@ -5,27 +5,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chess Game</title>
     <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
         #chessboard {
             display: grid;
-            grid-template-columns: repeat(8, 40px);
-            grid-template-rows: repeat(8, 40px);
-            margin: 20px auto;
+            grid-template-columns: repeat(8, 100px);
+            grid-template-rows: repeat(8, 100px);
+            width: 800px;
+            height: 800px;
         }
+        
         .square {
-            width: 40px;
-            height: 40px;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 18px;
+            width: 100px;
+            height: 100px;
             cursor: pointer;
+            position: relative;
         }
+        
         .white { background-color: #f0d9b5; }
         .black { background-color: #b58863; }
+        
         #captured-white, #captured-black {
-            margin: 10px auto;
-            text-align: center;
-            font-size: 18px;
+            margin: 10px 0;
+            font-size: 20px;
+        }
+        
+        .piece-image {
+            width: 80px;
+            height: 80px;
+        }
+        
+        .valid-move {
+            background-color: rgba(0, 255, 0, 0.3);
         }
     </style>
 </head>
@@ -57,7 +77,7 @@
         function handleSquareClick(index) {
             const row = Math.floor(index / 8);
             const col = index % 8;
-            fetch('/select', {
+            fetch('/move', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -74,26 +94,6 @@
             });
         }
 
-        function movePiece(index) {
-            const row = Math.floor(index / 8);
-            const col = index % 8;
-            fetch('/move', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ x: col, y: row })
-            })
-            .then(response => response.json())
-            .then(data => {
-                gameState = data;
-                updateBoard();
-            })
-            .catch(error => {
-                console.error('Error moving piece:', error);
-            });
-        }
-
         function updateBoard() {
             const squares = document.querySelectorAll('.square');
             squares.forEach(square => {
@@ -106,15 +106,23 @@
                 const blackIndex = gameState.black_locations.findIndex(loc => loc[0] === col && loc[1] === row);
 
                 if (whiteIndex !== -1) {
-                    square.textContent = gameState.white_pieces[whiteIndex];
+                    const piece = gameState.white_pieces[whiteIndex];
+                    const img = document.createElement('img');
+                    img.src = `/images/${piece}_white.png`;
+                    img.classList.add('piece-image');
+                    square.appendChild(img);
                 } else if (blackIndex !== -1) {
-                    square.textContent = gameState.black_pieces[blackIndex];
+                    const piece = gameState.black_pieces[blackIndex];
+                    const img = document.createElement('img');
+                    img.src = `/images/${piece}_black.png`;
+                    img.classList.add('piece-image');
+                    square.appendChild(img);
                 }
 
                 if (gameState.valid_moves.some(move => move[0] === col && move[1] === row)) {
-                    square.style.backgroundColor = 'lightgreen';
+                    square.classList.add('valid-move');
                 } else {
-                    square.style.backgroundColor = (Math.floor(index / 8) + index % 8) % 2 === 0 ? '#f0d9b5' : '#b58863';
+                    square.classList.remove('valid-move');
                 }
             });
 
