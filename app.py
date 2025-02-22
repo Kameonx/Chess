@@ -1,3 +1,5 @@
+# app.py
+
 # Importing Modules
 import pygame
 import requests
@@ -13,9 +15,9 @@ HEIGHT = 900
 screen = pygame.display.set_mode([WIDTH, HEIGHT])
 pygame.display.set_caption('Chess Game')
 
-font = pygame.font.Font('freesansbold.ttf', 20)
-medium_font = pygame.font.Font('freesansbold.ttf', 40)
-big_font = pygame.font.Font('freesansbold.ttf', 50)
+font = pygame.font.Font(None, 20)
+medium_font = pygame.font.Font(None, 40)
+big_font = pygame.font.Font(None, 50)
 
 timer = pygame.time.Clock()
 fps = 60
@@ -38,55 +40,69 @@ turn_step = 0
 selection = 100
 valid_moves = []
 
-# url for chess pieces images
-image_urls = ['https://media.geeksforgeeks.org/wp-content/uploads/20240302025946/black_queen.png',
-              'https://media.geeksforgeeks.org/wp-content/uploads/20240302025948/black_king.png',
-              'https://media.geeksforgeeks.org/wp-content/uploads/20240302025345/black_rook.png',
-              'https://media.geeksforgeeks.org/wp-content/uploads/20240302025951/black_bishop.png',
-              'https://media.geeksforgeeks.org/wp-content/uploads/20240302025947/black_knight.png',
-              'https://media.geeksforgeeks.org/wp-content/uploads/20240302025945/black_pawn.png',
-              'https://media.geeksforgeeks.org/wp-content/uploads/20240302025952/white_queen.png',
-              'https://media.geeksforgeeks.org/wp-content/uploads/20240302025943/white_king.png',
-              'https://media.geeksforgeeks.org/wp-content/uploads/20240302025949/white_rook.png',
-              'https://media.geeksforgeeks.org/wp-content/uploads/20240302025944/white_bishop.png',
-              'https://media.geeksforgeeks.org/wp-content/uploads/20240302025325/white_knight.png',
-              'https://media.geeksforgeeks.org/wp-content/uploads/20240302025953/white_pawn.png']
+# urls for chess pieces images
+image_urls = [
+    'https://media.geeksforgeeks.org/wp-content/uploads/20240302025946/black_queen.png',
+    'https://media.geeksforgeeks.org/wp-content/uploads/20240302025948/black_king.png',
+    'https://media.geeksforgeeks.org/wp-content/uploads/20240302025345/black_rook.png',
+    'https://media.geeksforgeeks.org/wp-content/uploads/20240302025951/black_bishop.png',
+    'https://media.geeksforgeeks.org/wp-content/uploads/20240302025947/black_knight.png',
+    'https://media.geeksforgeeks.org/wp-content/uploads/20240302025945/black_pawn.png',
+    'https://media.geeksforgeeks.org/wp-content/uploads/20240302025952/white_queen.png',
+    'https://media.geeksforgeeks.org/wp-content/uploads/20240302025943/white_king.png',
+    'https://media.geeksforgeeks.org/wp-content/uploads/20240302025949/white_rook.png',
+    'https://media.geeksforgeeks.org/wp-content/uploads/20240302025944/white_bishop.png',
+    'https://media.geeksforgeeks.org/wp-content/uploads/20240302025325/white_knight.png',
+    'https://media.geeksforgeeks.org/wp-content/uploads/20240302025953/white_pawn.png'
+]
 
 # load in game piece images (queen, king, rook, bishop, knight, pawn) x 2
-black_queen = pygame.image.load(BytesIO(requests.get(image_urls[0]).content))
+black_queen = pygame.image.load(
+    BytesIO(requests.get(image_urls[0]).content))
 black_queen = pygame.transform.scale(black_queen, (80, 80))
 black_queen_small = pygame.transform.scale(black_queen, (45, 45))
-black_king = pygame.image.load(BytesIO(requests.get(image_urls[1]).content))
+black_king = pygame.image.load(
+    BytesIO(requests.get(image_urls[1]).content))
 black_king = pygame.transform.scale(black_king, (80, 80))
 black_king_small = pygame.transform.scale(black_king, (45, 45))
-black_rook = pygame.image.load(BytesIO(requests.get(image_urls[2]).content))
+black_rook = pygame.image.load(
+    BytesIO(requests.get(image_urls[2]).content))
 black_rook = pygame.transform.scale(black_rook, (80, 80))
 black_rook_small = pygame.transform.scale(black_rook, (45, 45))
-black_bishop = pygame.image.load(BytesIO(requests.get(image_urls[3]).content))
+black_bishop = pygame.image.load(
+    BytesIO(requests.get(image_urls[3]).content))
 black_bishop = pygame.transform.scale(black_bishop, (80, 80))
 black_bishop_small = pygame.transform.scale(black_bishop, (45, 45))
-black_knight = pygame.image.load(BytesIO(requests.get(image_urls[4]).content))
+black_knight = pygame.image.load(
+    BytesIO(requests.get(image_urls[4]).content))
 black_knight = pygame.transform.scale(black_knight, (80, 80))
 black_knight_small = pygame.transform.scale(black_knight, (45, 45))
-black_pawn = pygame.image.load(BytesIO(requests.get(image_urls[5]).content))
+black_pawn = pygame.image.load(
+    BytesIO(requests.get(image_urls[5]).content))
 black_pawn = pygame.transform.scale(black_pawn, (65, 65))
 black_pawn_small = pygame.transform.scale(black_pawn, (45, 45))
-white_queen = pygame.image.load(BytesIO(requests.get(image_urls[6]).content))
+white_queen = pygame.image.load(
+    BytesIO(requests.get(image_urls[6]).content))
 white_queen = pygame.transform.scale(white_queen, (80, 80))
 white_queen_small = pygame.transform.scale(white_queen, (45, 45))
-white_king = pygame.image.load(BytesIO(requests.get(image_urls[7]).content))
+white_king = pygame.image.load(
+    BytesIO(requests.get(image_urls[7]).content))
 white_king = pygame.transform.scale(white_king, (80, 80))
 white_king_small = pygame.transform.scale(white_king, (45, 45))
-white_rook = pygame.image.load(BytesIO(requests.get(image_urls[8]).content))
+white_rook = pygame.image.load(
+    BytesIO(requests.get(image_urls[8]).content))
 white_rook = pygame.transform.scale(white_rook, (80, 80))
 white_rook_small = pygame.transform.scale(white_rook, (45, 45))
-white_bishop = pygame.image.load(BytesIO(requests.get(image_urls[9]).content))
+white_bishop = pygame.image.load(
+    BytesIO(requests.get(image_urls[9]).content))
 white_bishop = pygame.transform.scale(white_bishop, (80, 80))
 white_bishop_small = pygame.transform.scale(white_bishop, (45, 45))
-white_knight = pygame.image.load(BytesIO(requests.get(image_urls[10]).content))
+white_knight = pygame.image.load(
+    BytesIO(requests.get(image_urls[10]).content))
 white_knight = pygame.transform.scale(white_knight, (80, 80))
 white_knight_small = pygame.transform.scale(white_knight, (45, 45))
-white_pawn = pygame.image.load(BytesIO(requests.get(image_urls[11]).content))
+white_pawn = pygame.image.load(
+    BytesIO(requests.get(image_urls[11]).content))
 white_pawn = pygame.transform.scale(white_pawn, (65, 65))
 white_pawn_small = pygame.transform.scale(white_pawn, (45, 45))
 
@@ -97,8 +113,8 @@ small_white_images = [white_pawn_small, white_queen_small, white_king_small, whi
 
 black_images = [black_pawn, black_queen, black_king,
                 black_knight, black_rook, black_bishop]
-small_black_images = [black_pawn_small, black_queen_small, black_king_small,
-                      black_knight_small, black_rook_small, black_bishop_small]
+small_black_images = [black_pawn_small, black_queen_small, black_king_small, black_knight_small,
+                      black_rook_small, black_bishop_small]
 
 piece_list = ['pawn', 'queen', 'king', 'knight', 'rook', 'bishop']
 
@@ -106,7 +122,6 @@ piece_list = ['pawn', 'queen', 'king', 'knight', 'rook', 'bishop']
 counter = 0
 winner = ''
 game_over = False
-
 
 # draw main game board
 def draw_board():
@@ -119,18 +134,17 @@ def draw_board():
         else:
             pygame.draw.rect(screen, 'light gray', [
                              700 - (column * 200), row * 100, 100, 100])
-        pygame.draw.rect(screen, 'gray', [0, 800, WIDTH, 100])
-        pygame.draw.rect(screen, 'gold', [0, 800, WIDTH, 100], 5)
-        pygame.draw.rect(screen, 'gold', [800, 0, 200, HEIGHT], 5)
-        status_text = ['White: Select a Piece to Move!', 'White: Select a Destination!',
-                       'Black: Select a Piece to Move!', 'Black: Select a Destination!']
-        screen.blit(big_font.render(
-            status_text[turn_step], True, 'black'), (20, 820))
-        for i in range(9):
-            pygame.draw.line(screen, 'black', (0, 100 * i), (800, 100 * i), 2)
-            pygame.draw.line(screen, 'black', (100 * i, 0), (100 * i, 800), 2)
-        screen.blit(medium_font.render('FORFEIT', True, 'black'), (810, 830))
-
+    pygame.draw.rect(screen, 'gray', [0, 800, WIDTH, 100])
+    pygame.draw.rect(screen, 'gold', [0, 800, WIDTH, 100], 5)
+    pygame.draw.rect(screen, 'gold', [800, 0, 200, HEIGHT], 5)
+    status_text = ['White: Select a Piece to Move!', 'White: Select a Destination!',
+                   'Black: Select a Piece to Move!', 'Black: Select a Destination!']
+    screen.blit(big_font.render(
+        status_text[turn_step], True, 'black'), (20, 820))
+    for i in range(9):
+        pygame.draw.line(screen, 'black', (0, 100 * i), (800, 100 * i), 2)
+        pygame.draw.line(screen, 'black', (100 * i, 0), (100 * i, 800), 2)
+    screen.blit(medium_font.render('FORFEIT', True, 'black'), (810, 830))
 
 # draw pieces onto board
 def draw_pieces():
@@ -160,12 +174,11 @@ def draw_pieces():
                 pygame.draw.rect(screen, 'blue', [black_locations[i][0] * 100 + 1, black_locations[i][1] * 100 + 1,
                                                   100, 100], 2)
 
-
 # function to check all pieces valid options on board
 def check_options(pieces, locations, turn):
     moves_list = []
     all_moves_list = []
-    for i in range((len(pieces))):
+    for i in range(len(pieces)):
         location = locations[i]
         piece = pieces[i]
         if piece == 'pawn':
@@ -182,7 +195,6 @@ def check_options(pieces, locations, turn):
             moves_list = check_king(location, turn)
         all_moves_list.append(moves_list)
     return all_moves_list
-
 
 # check king valid moves
 def check_king(position, color):
@@ -202,7 +214,6 @@ def check_king(position, color):
             moves_list.append(target)
     return moves_list
 
-
 # check queen valid moves
 def check_queen(position, color):
     moves_list = check_bishop(position, color)
@@ -210,7 +221,6 @@ def check_queen(position, color):
     for i in range(len(second_list)):
         moves_list.append(second_list[i])
     return moves_list
-
 
 # check bishop moves
 def check_bishop(position, color):
@@ -248,7 +258,6 @@ def check_bishop(position, color):
                 path = False
     return moves_list
 
-
 # check rook moves
 def check_rook(position, color):
     moves_list = []
@@ -285,7 +294,6 @@ def check_rook(position, color):
                 path = False
     return moves_list
 
-
 # check valid pawn moves
 def check_pawn(position, color):
     moves_list = []
@@ -306,13 +314,12 @@ def check_pawn(position, color):
             moves_list.append((position[0], position[1] - 1))
         if (position[0], position[1] - 2) not in white_locations and \
                 (position[0], position[1] - 2) not in black_locations and position[1] == 6:
-            moves_list.append((position[0], position[1] -2))
+            moves_list.append((position[0], position[1] - 2))
         if (position[0] + 1, position[1] - 1) in white_locations:
             moves_list.append((position[0] + 1, position[1] - 1))
         if (position[0] - 1, position[1] - 1) in white_locations:
             moves_list.append((position[0] - 1, position[1] - 1))
     return moves_list
-
 
 # check valid knight moves
 def check_knight(position, color):
@@ -332,7 +339,6 @@ def check_knight(position, color):
             moves_list.append(target)
     return moves_list
 
-
 # check for valid moves for just selected piece
 def check_valid_moves():
     if turn_step < 2:
@@ -341,7 +347,6 @@ def check_valid_moves():
         options_list = black_options
     valid_options = options_list[selection]
     return valid_options
-
 
 # draw valid moves on screen
 def draw_valid(moves):
@@ -353,7 +358,6 @@ def draw_valid(moves):
         pygame.draw.circle(
             screen, color, (moves[i][0] * 100 + 50, moves[i][1] * 100 + 50), 5)
 
-
 # draw captured pieces on side of screen
 def draw_captured():
     for i in range(len(captured_pieces_white)):
@@ -364,7 +368,6 @@ def draw_captured():
         captured_piece = captured_pieces_black[i]
         index = piece_list.index(captured_piece)
         screen.blit(small_white_images[index], (925, 5 + 50 * i))
-
 
 # draw a flashing square around king if in check
 def draw_check():
@@ -387,14 +390,12 @@ def draw_check():
                         pygame.draw.rect(screen, 'dark blue', [black_locations[king_index][0] * 100 + 1,
                                                                black_locations[king_index][1] * 100 + 1, 100, 100], 5)
 
-
 def draw_game_over():
     pygame.draw.rect(screen, 'black', [200, 200, 400, 70])
     screen.blit(font.render(
         f'{winner} won the game!', True, 'white'), (210, 210))
     screen.blit(font.render(f'Press ENTER to Restart!',
                             True, 'white'), (210, 240))
-
 
 # main game loop
 black_options = check_options(black_pieces, black_locations, 'black')
@@ -423,9 +424,10 @@ while run:
             x_coord = event.pos[0] // 100
             y_coord = event.pos[1] // 100
             click_coords = (x_coord, y_coord)
+            if click_coords == (8, 8) or click_coords == (9, 8):
+                winner = 'black' if turn_step < 2 else 'white'
+                game_over = True
             if turn_step <= 1:
-                if click_coords == (8, 8) or click_coords == (9, 8):
-                    winner = 'black'
                 if click_coords in white_locations:
                     selection = white_locations.index(click_coords)
                     if turn_step == 0:
@@ -437,18 +439,15 @@ while run:
                         captured_pieces_white.append(black_pieces[black_piece])
                         if black_pieces[black_piece] == 'king':
                             winner = 'white'
+                            game_over = True
                         black_pieces.pop(black_piece)
                         black_locations.pop(black_piece)
-                    black_options = check_options(
-                        black_pieces, black_locations, 'black')
-                    white_options = check_options(
-                        white_pieces, white_locations, 'white')
+                    black_options = check_options(black_pieces, black_locations, 'black')
+                    white_options = check_options(white_pieces, white_locations, 'white')
                     turn_step = 2
                     selection = 100
                     valid_moves = []
             if turn_step > 1:
-                if click_coords == (8, 8) or click_coords == (9, 8):
-                    winner = 'white'
                 if click_coords in black_locations:
                     selection = black_locations.index(click_coords)
                     if turn_step == 2:
@@ -460,12 +459,11 @@ while run:
                         captured_pieces_black.append(white_pieces[white_piece])
                         if white_pieces[white_piece] == 'king':
                             winner = 'black'
+                            game_over = True
                         white_pieces.pop(white_piece)
                         white_locations.pop(white_piece)
-                    black_options = check_options(
-                        black_pieces, black_locations, 'black')
-                    white_options = check_options(
-                        white_pieces, white_locations, 'white')
+                    black_options = check_options(black_pieces, black_locations, 'black')
+                    white_options = check_options(white_pieces, white_locations, 'white')
                     turn_step = 0
                     selection = 100
                     valid_moves = []
@@ -487,10 +485,8 @@ while run:
                 turn_step = 0
                 selection = 100
                 valid_moves = []
-                black_options = check_options(
-                    black_pieces, black_locations, 'black')
-                white_options = check_options(
-                    white_pieces, white_locations, 'white')
+                black_options = check_options(black_pieces, black_locations, 'black')
+                white_options = check_options(white_pieces, white_locations, 'white')
 
     if winner != '':
         game_over = True
@@ -498,4 +494,4 @@ while run:
 
     pygame.display.flip()
 
-pygame.quit() 
+pygame.quit()
