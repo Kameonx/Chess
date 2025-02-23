@@ -11,6 +11,8 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            background-color: #1a1a1a;
+            color: white;
         }
         
         #game-info {
@@ -22,16 +24,13 @@
             display: grid;
             grid-template-columns: repeat(8, 100px);
             grid-template-rows: repeat(8, 100px);
-            width: 800px;
-            height: 800px;
+            touch-action: zoom-in;
         }
         
         .square {
             display: flex;
             justify-content: center;
             align-items: center;
-            width: 100px;
-            height: 100px;
             cursor: pointer;
             position: relative;
         }
@@ -45,8 +44,8 @@
         }
         
         .piece-image {
-            width: 80px;
-            height: 80px;
+            max-width: 80px;
+            max-height: 80px;
         }
         
         .valid-move {
@@ -85,6 +84,18 @@
             cursor: pointer;
             margin: 5px;
         }
+        
+        @media (max-width: 600px) {
+            #chessboard {
+                grid-template-columns: repeat(8, 50px);
+                grid-template-rows: repeat(8, 50px);
+            }
+            
+            .piece-image {
+                max-width: 50px;
+                max-height: 50px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -122,8 +133,7 @@
                 } else {
                     square.classList.add('black');
                 }
-                square.dataset.index = i;
-                square.addEventListener('click', () => handleSquareClick(i));
+                square.dataset.index = i;                square.addEventListener('click', () => handleSquareClick(i));
                 board.appendChild(square);
             }
         }
@@ -154,7 +164,7 @@
                 promoColor = gameState.white_promote ? 'white' : 'black';
                 promoIndex = gameState.promo_index;
                 promotionOptions.innerHTML = '';
-                const promotions = promoColor === 'white' ? gameState.white_promotions : gameState.black_promotions;
+                const promotions = promoColor === 'white' ? ['queen', 'rook', 'bishop', 'knight'] : ['queen', 'rook', 'bishop', 'knight'];
                 promotions.forEach(piece => {
                     const option = document.createElement('div');
                     option.classList.add('promotion-option');
