@@ -257,8 +257,10 @@ def check_pawn(position, color):
         if (position[0], position[1] + 1) not in white_locations and \
                 (position[0], position[1] + 1) not in black_locations and position[1] < 7:
             moves_list.append((position[0], position[1] + 1))
-        if (position[0], position[1] + 2) not in white_locations and \
-                (position[0], position[1] + 2) not in black_locations and position[1] == 1:
+        if position[1] == 1 and (position[0], position[1] + 2) not in white_locations and \
+                (position[0], position[1] + 2) not in black_locations and \
+                (position[0], position[1] + 1) not in white_locations and \
+                (position[0], position[1] + 1) not in black_locations:
             moves_list.append((position[0], position[1] + 2))
         if (position[0] + 1, position[1] + 1) in black_locations:
             moves_list.append((position[0] + 1, position[1] + 1))
@@ -268,8 +270,10 @@ def check_pawn(position, color):
         if (position[0], position[1] - 1) not in white_locations and \
                 (position[0], position[1] - 1) not in black_locations and position[1] > 0:
             moves_list.append((position[0], position[1] - 1))
-        if (position[0], position[1] - 2) not in white_locations and \
-                (position[0], position[1] - 2) not in black_locations and position[1] == 6:
+        if position[1] == 6 and (position[0], position[1] - 2) not in white_locations and \
+                (position[0], position[1] - 2) not in black_locations and \
+                (position[0], position[1] - 1) not in white_locations and \
+                (position[0], position[1] - 1) not in black_locations:
             moves_list.append((position[0], position[1] - 2))
         if (position[0] + 1, position[1] - 1) in white_locations:
             moves_list.append((position[0] + 1, position[1] - 1))
@@ -365,7 +369,8 @@ def make_move():
         # Handle castling
         if pieces[selection] == 'king':
             if click_coords == (6, 0) and original_location == (4, 0):
-                white_locations[7] = (5, 0)  # Move right rook to (5, 0)
+                white_locations[7] = (5, 0)
+                # Move right rook to (5, 0)
                 white_moved[7] = True       # Mark right rook as moved
             elif click_coords == (2, 0) and original_location == (4, 0):
                 white_locations[0] = (3, 0)  # Move left rook to (3, 0)
