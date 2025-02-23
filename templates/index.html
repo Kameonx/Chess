@@ -13,6 +13,11 @@
             align-items: center;
         }
         
+        #game-info {
+            margin: 20px 0;
+            font-size: 24px;
+        }
+        
         #chessboard {
             display: grid;
             grid-template-columns: repeat(8, 100px);
@@ -47,17 +52,66 @@
         .valid-move {
             background-color: rgba(0, 255, 0, 0.3);
         }
+        
+        .castle-move {
+            background-color: rgba(0, 0, 255, 0.3);
+        }
+        
+        #restart-btn {
+            padding: 10px 20px;
+            font-size: 18px;
+            margin: 10px 0;
+            cursor: pointer;
+        }
+        
+        .check-indicator {
+            color: red;
+            font-weight: bold;
+        }
+        
+        #promotion-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+        
+        .promotion-option {
+            cursor: pointer;
+            margin: 5px;
+        }
     </style>
 </head>
 <body>
+    <div id="game-info">
+        <div id="turn-display"></div>
+        <div id="check-display" class="check-indicator"></div>
+    </div>
     <div id="chessboard"></div>
+    <button id="restart-btn" onclick="restartGame()">Restart Game</button>
     <div id="captured-white">Captured White: <span id="captured-white-list"></span></div>
     <div id="captured-black">Captured Black: <span id="captured-black-list"></span></div>
+    <div id="promotion-modal">
+        <div>Select promotion piece:</div>
+        <div id="promotion-options"></div>
+    </div>
     <script>
         const board = document.getElementById('chessboard');
         const capturedWhite = document.getElementById('captured-white-list');
         const capturedBlack = document.getElementById('captured-black-list');
+        const restartBtn = document.getElementById('restart-btn');
+        const turnDisplay = document.getElementById('turn-display');
+        const checkDisplay = document.getElementById('check-display');
+        const promotionModal = document.getElementById('promotion-modal');
+        const promotionOptions = document.getElementById('promotion-options');
         let gameState = {};
+        let promoColor = '';
+        let promoIndex = 0;
 
         function createBoard() {
             for (let i = 0; i < 64; i++) {
@@ -88,9 +142,47 @@
             .then(data => {
                 gameState = data;
                 updateBoard();
+                handlePromotion();
             })
             .catch(error => {
                 console.error('Error selecting square:', error);
+            });
+        }
+
+        function handlePromotion() {
+            if (gameState.white_promote || gameState.black_promote) {
+                promoColor = gameState.white_promote ? 'white' : 'black';
+                promoIndex = gameState.promo_index;
+                promotionOptions.innerHTML = '';
+                const promotions = promoColor === 'white' ? gameState.white_promotions : gameState.black_promotions;
+                promotions.forEach(piece => {
+                    const option = document.createElement('div');
+                    option.classList.add('promotion-option');
+                    option.textContent = piece;
+                    option.addEventListener('click', () => selectPromotion(piece));
+                    promotionOptions.appendChild(option);
+                });
+                promotionModal.style.display = 'block';
+            } else {
+                promotionModal.style.display = 'none';
+            }
+        }
+
+        function selectPromotion(piece) {
+            fetch('/promote', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ piece: piece })
+            })
+            .then(response => response.json())
+            .then(data => {
+                gameState = data;
+                updateBoard();
+            })
+            .catch(error => {
+                console.error('Error promoting pawn:', error);
             });
         }
 
@@ -119,19 +211,39 @@
                     square.appendChild(img);
                 }
 
-                if (gameState.valid_moves.some(move => move[0] === col && move[1] === row)) {
-                    square.classList.add('valid-move');
-                } else {
-                    square.classList.remove('valid-move');
-                }
+                // Clear previous valid moves
+                square.classList.remove('valid-move', 'castle-move');
+
+                // Add valid moves
+                gameState.valid_moves.forEach(move => {
+                    const [moveCol, moveRow, moveType] = move;
+                    if (moveCol === col && moveRow === row) {
+                        if (moveType && moveType.includes('castle')) {
+                            square.classList.add('castle-move');
+                        } else {
+                            square.classList.add('valid-move');
+                        }
+                    }
+                });
             });
 
             capturedWhite.textContent = gameState.captured_pieces_white.join(', ');
             capturedBlack.textContent = gameState.captured_pieces_black.join(', ');
+
+            // Update turn display
+            turnDisplay.textContent = `Current Turn: ${gameState.turn_step % 2 === 0 ? 'WHITE' : 'BLACK'}`;
+
+            // Update check display
+            checkDisplay.textContent = gameState.check ? `${gameState.check.toUpperCase()} IS IN CHECK!` : '';
+
+            // Update game result
+            if (gameState.game_over) {
+                turnDisplay.textContent = `GAME OVER - ${gameState.winner.toUpperCase()} WINS!`;
+            }
         }
 
-        function resetBoard() {
-            fetch('/reset', {
+        function restartGame() {
+            fetch('/restart', {
                 method: 'POST'
             })
             .then(response => response.json())
@@ -140,13 +252,23 @@
                 updateBoard();
             })
             .catch(error => {
-                console.error('Error resetting board:', error);
+                console.error('Error restarting game:', error);
             });
         }
 
         window.onload = () => {
             createBoard();
-            resetBoard();
+            fetch('/state', {
+                method: 'GET'
+            })
+            .then(response => response.json())
+            .then(data => {
+                gameState = data;
+                updateBoard();
+            })
+            .catch(error => {
+                console.error('Error fetching game state:', error);
+            });
         };
     </script>
 </body>
