@@ -49,7 +49,7 @@
         }
         
         .valid-move {
-            background-color: rgba(0, 255, 0, 0.3);
+            background-color: rgba(0, 255, 0, 0.5);
         }
         
         .castle-move {
@@ -104,9 +104,9 @@
         <div id="check-display" class="check-indicator"></div>
     </div>
     <div id="chessboard"></div>
-    <button id="restart-btn" onclick="restartGame()">Restart Game</button>
     <div id="captured-white">Captured White: <span id="captured-white-list"></span></div>
     <div id="captured-black">Captured Black: <span id="captured-black-list"></span></div>
+    <button id="restart-btn" onclick="restartGame()">Restart Game</button>
     <div id="promotion-modal">
         <div>Select promotion piece:</div>
         <div id="promotion-options"></div>
@@ -133,7 +133,8 @@
                 } else {
                     square.classList.add('black');
                 }
-                square.dataset.index = i;                square.addEventListener('click', () => handleSquareClick(i));
+                square.dataset.index = i;
+                square.addEventListener('click', () => handleSquareClick(i));
                 board.appendChild(square);
             }
         }
