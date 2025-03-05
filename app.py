@@ -11,11 +11,11 @@ WIDTH = 1000
 HEIGHT = 900
 
 # Game state
-white_pieces = ['rook', 'knight', 'bishop', 'king', 'queen', 'bishop', 'knight', 'rook',
+white_pieces = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook',
                 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn']
 white_locations = [(0, 0), (1, 0), (2, 0), (3, 0), (4, 0), (5, 0), (6, 0), (7, 0),
                    (0, 1), (1, 1), (2, 1), (3, 1), (4, 1), (5, 1), (6, 1), (7, 1)]
-black_pieces = ['rook', 'knight', 'bishop', 'king', 'queen', 'bishop', 'knight', 'rook',
+black_pieces = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook',
                 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn']
 black_locations = [(0, 7), (1, 7), (2, 7), (3, 7), (4, 7), (5, 7), (6, 7), (7, 7),
                    (0, 6), (1, 6), (2, 6), (3, 6), (4, 6), (5, 6), (6, 6), (7, 6)]
@@ -149,52 +149,63 @@ def check_king(position, color, index):
     moves_list = []
     castle_moves = []
     if color == 'white':
-        enemies_list = black_locations
         friends_list = white_locations
+        enemies_list = black_locations
         moved = white_moved
     else:
         friends_list = black_locations
         enemies_list = white_locations
         moved = black_moved
+    
+    # Regular king moves
     targets = [(1, 0), (1, 1), (1, -1), (-1, 0), (-1, 1), (-1, -1), (0, 1), (0, -1)]
-    for i in range(8):
-        target = (position[0] + targets[i][0], position[1] + targets[i][1])
-        if target not in friends_list and 0 <= target[0] <= 7 and 0 <= target[1] <= 7:
+    for t in targets:
+        target = (position[0] + t[0], position[1] + t[1])
+        if 0 <= target[0] <= 7 and 0 <= target[1] <= 7 and target not in friends_list:
             moves_list.append(target)
-    
+
+    # Castling logic for both sides
     if not moved[index]:
-        if color == 'white' and position == (4, 0):
-            if (not moved[7]) and (7, 0) in white_locations and (5, 0) not in friends_list + enemies_list and (6, 0) not in friends_list + enemies_list:
+        if color == 'white' and position == (4, 0):  # White king at e1
+            # Kingside castling
+            if not moved[7] and (5, 0) not in white_locations + black_locations and (6, 0) not in white_locations + black_locations:
                 castle_moves.append((6, 0, 'castle_kingside'))
-            if (not moved[0]) and (0, 0) in white_locations and (1, 0) not in friends_list + enemies_list and (2, 0) not in friends_list + enemies_list and (3, 0) not in friends_list + enemies_list:
+            # Queenside castling
+            if not moved[0] and (1, 0) not in white_locations + black_locations and (2, 0) not in white_locations + black_locations and (3, 0) not in white_locations + black_locations:
                 castle_moves.append((2, 0, 'castle_queenside'))
-        elif color == 'black' and position == (4, 7):
-            if (not moved[15]) and (7, 7) in black_locations and (5, 7) not in friends_list + enemies_list and (6, 7) not in friends_list + enemies_list:
+        elif color == 'black' and position == (4, 7):  # Black king at e8
+            # Kingside castling
+            if not moved[15] and (5, 7) not in white_locations + black_locations and (6, 7) not in white_locations + black_locations:
                 castle_moves.append((6, 7, 'castle_kingside'))
-            if (not moved[8]) and (0, 7) in black_locations and (1, 7) not in friends_list + enemies_list and (2, 7) not in friends_list + enemies_list and (3, 7) not in friends_list + enemies_list:
+            # Queenside castling
+            if not moved[8] and (1, 7) not in white_locations + black_locations and (2, 7) not in white_locations + black_locations and (3, 7) not in white_locations + black_locations:
                 castle_moves.append((2, 7, 'castle_queenside'))
-    
-    for move in castle_moves:
-        moves_list.append(move)
-        
+
+    moves_list.extend(castle_moves)
     return moves_list
 
 def check_valid_moves(locations, options, selection):
     if selection == 100:
         return []
-    valid_moves = options[selection]
+    valid_moves = options[selection].copy()
     piece = white_pieces[selection] if turn_step % 2 == 0 else black_pieces[selection]
-    if piece == 'king' and not white_moved[selection] if turn_step % 2 == 0 else not black_moved[selection]:
-        if turn_step % 2 == 0:
-            if (6, 0) in valid_moves:
-                valid_moves.append((7, 0, 'castle_kingside'))  # Highlight the rook for kingside castling
-            if (2, 0) in valid_moves:
-                valid_moves.append((0, 0, 'castle_queenside'))  # Highlight the rook for queenside castling
-        else:
-            if (6, 7) in valid_moves:
-                valid_moves.append((7, 7, 'castle_kingside'))  # Highlight the rook for kingside castling
-            if (2, 7) in valid_moves:
-                valid_moves.append((0, 7, 'castle_queenside'))  # Highlight the rook for queenside castling
+    
+    if piece == 'king':
+        if turn_step % 2 == 0 and not white_moved[selection]:  # White king
+            # Kingside castling
+            if not white_moved[7] and (5, 0) not in white_locations + black_locations and (6, 0) not in white_locations + black_locations:
+                valid_moves.append((6, 0, 'castle_kingside'))
+            # Queenside castling
+            if not white_moved[0] and (1, 0) not in white_locations + black_locations and (2, 0) not in white_locations + black_locations and (3, 0) not in white_locations + black_locations:
+                valid_moves.append((2, 0, 'castle_queenside'))
+        elif turn_step % 2 == 1 and not black_moved[selection]:  # Black king
+            # Kingside castling
+            if not black_moved[15] and (5, 7) not in white_locations + black_locations and (6, 7) not in white_locations + black_locations:
+                valid_moves.append((6, 7, 'castle_kingside'))
+            # Queenside castling
+            if not black_moved[8] and (1, 7) not in white_locations + black_locations and (2, 7) not in white_locations + black_locations and (3, 7) not in white_locations + black_locations:
+                valid_moves.append((2, 7, 'castle_queenside'))
+    
     return valid_moves
 
 def is_check(color):
@@ -339,62 +350,66 @@ def make_move():
     if click_coords in locations:
         selection = locations.index(click_coords)
         valid_moves = check_valid_moves(locations, options, selection)
-    elif click_coords in valid_moves and selection != 100:
-        original_location = locations[selection]
-        locations[selection] = click_coords
+    elif selection != 100:
+        matching_moves = [move for move in valid_moves if isinstance(move, tuple) and (move[0], move[1]) == click_coords]
         
-        # Handle castling
-        if pieces[selection] == 'king':
-            if click_coords == (6, 0) and original_location == (4, 0):
-                white_locations[white_locations.index((7, 0))] = (5, 0)  # Move right rook to (5, 0)
-            elif click_coords == (2, 0) and original_location == (4, 0):
-                white_locations[white_locations.index((0, 0))] = (3, 0)  # Move left rook to (3, 0)
-            elif click_coords == (6, 7) and original_location == (4, 7):
-                black_locations[black_locations.index((7, 7))] = (5, 7)  # Move right rook to (5, 7)
-            elif click_coords == (2, 7) and original_location == (4, 7):
-                black_locations[black_locations.index((0, 7))] = (3, 7)  # Move left rook to (3, 7)
-        
-        # Handle rook selection for castling
-        if pieces[selection] == 'rook':
-            if color == 'white':
-                if click_coords == (7, 0) and (6, 0, 'castle_kingside') in valid_moves:
-                    white_locations[white_locations.index((4, 0))] = (6, 0)  # Move king to (6, 0)
-                    white_locations[white_locations.index((7, 0))] = (5, 0)  # Move right rook to (5, 0)
-                elif click_coords == (0, 0) and (2, 0, 'castle_queenside') in valid_moves:
-                    white_locations[white_locations.index((4, 0))] = (2, 0)  # Move king to (2, 0)
-                    white_locations[white_locations.index((0, 0))] = (3, 0)  # Move left rook to (3, 0)
+        if matching_moves:
+            move = matching_moves[0]
+            original_location = locations[selection]
+            
+            # Handle castling moves
+            if len(move) == 3 and 'castle' in move[2]:
+                if pieces[selection] == 'king':
+                    if turn_step % 2 == 0:  # White's turn
+                        if move[2] == 'castle_kingside':
+                            # Move king to g1 and rook to f1
+                            white_locations[white_locations.index((7, 0))] = (5, 0)  # Rook to f1
+                            locations[selection] = (6, 0)  # King to g1
+                        else:  # Queenside
+                            # Move king to c1 and rook to d1
+                            white_locations[white_locations.index((0, 0))] = (3, 0)  # Rook to d1
+                            locations[selection] = (2, 0)  # King to c1
+                    else:  # Black's turn
+                        if move[2] == 'castle_kingside':
+                            # Move king to g8 and rook to f8
+                            black_locations[black_locations.index((7, 7))] = (5, 7)  # Rook to f8
+                            locations[selection] = (6, 7)  # King to g8
+                        else:  # Queenside
+                            # Move king to c8 and rook to d8
+                            black_locations[black_locations.index((0, 7))] = (3, 7)  # Rook to d8
+                            locations[selection] = (2, 7)  # King to c8
             else:
-                if click_coords == (7, 7) and (6, 7, 'castle_kingside') in valid_moves:
-                    black_locations[black_locations.index((4, 7))] = (6, 7)  # Move king to (6, 7)
-                    black_locations[black_locations.index((7, 7))] = (5, 7)  # Move right rook to (5, 7)
-                elif click_coords == (0, 7) and (2, 7, 'castle_queenside') in valid_moves:
-                    black_locations[black_locations.index((4, 7))] = (2, 7)  # Move king to (2, 7)
-                    black_locations[black_locations.index((0, 7))] = (3, 7)  # Move left rook to (3, 7)
-
-        moved[selection] = True  # Mark the piece as moved
-
-        if click_coords in enemies_list:
-            enemy_index = enemies_list.index(click_coords)
-            enemies_captured.append(enemies_pieces[enemy_index])
-            if enemies_pieces[enemy_index] == 'king':
-                winner = color
-                game_over = True
-            enemies_pieces.pop(enemy_index)
-            enemies_list.pop(enemy_index)
-
-        black_options = check_options(black_pieces, black_locations, 'black')
-        white_options = check_options(white_pieces, white_locations, 'white')
-
-        if is_check(color):
-            check = color
-            if check_mate(color):
-                game_over = True
-        else:
-            check = ''
-
-        selection = 100
-        valid_moves = []
-        turn_step += 1
+                locations[selection] = click_coords
+            
+            moved[selection] = True
+            
+            if click_coords in enemies_list:
+                enemy_index = enemies_list.index(click_coords)
+                enemies_captured.append(enemies_pieces[enemy_index])
+                if enemies_pieces[enemy_index] == 'king':
+                    winner = color
+                    game_over = True
+                enemies_pieces.pop(enemy_index)
+                enemies_list.pop(enemy_index)
+            
+            # Handle pawn promotion
+            if pieces[selection] == 'pawn':
+                if (color == 'white' and click_coords[1] == 7) or (color == 'black' and click_coords[1] == 0):
+                    pieces[selection] = 'queen'
+            
+            black_options = check_options(black_pieces, black_locations, 'black')
+            white_options = check_options(white_pieces, white_locations, 'white')
+            
+            if is_check(color):
+                check = color
+                if check_mate(color):
+                    game_over = True
+            else:
+                check = ''
+            
+            selection = 100
+            valid_moves = []
+            turn_step += 1
 
     return jsonify({
         'white_pieces': white_pieces,
@@ -437,11 +452,11 @@ def promote():
 @app.route('/reset', methods=['POST'])
 def reset_board():
     global white_pieces, white_locations, black_pieces, black_locations, captured_pieces_white, captured_pieces_black, turn_step, selection, valid_moves, winner, game_over, check, white_moved, black_moved, black_options, white_options
-    white_pieces = ['rook', 'knight', 'bishop', 'king', 'queen', 'bishop', 'knight', 'rook',
+    white_pieces = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook',
                     'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn']
     white_locations = [(0, 0), (1, 0), (2, 0), (3, 0), (4, 0), (5, 0), (6, 0), (7, 0),
                        (0, 1), (1, 1), (2, 1), (3, 1), (4, 1), (5, 1), (6, 1), (7, 1)]
-    black_pieces = ['rook', 'knight', 'bishop', 'king', 'queen', 'bishop', 'knight', 'rook',
+    black_pieces = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook',
                     'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn']
     black_locations = [(0, 7), (1, 7), (2, 7), (3, 7), (4, 7), (5, 7), (6, 7), (7, 7),
                        (0, 6), (1, 6), (2, 6), (3, 6), (4, 6), (5, 6), (6, 6), (7, 6)]
