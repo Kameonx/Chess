@@ -54,7 +54,7 @@
         }
         
         .castle-move {
-            background-color: rgba(0, 0, 255, 0.3);
+            background-color: rgba(0, 0, 255, 0.5);
         }
         
         #restart-btn {
@@ -65,7 +65,15 @@
         }
         
         .check-indicator {
-            color: red;
+            font-weight: bold;
+        }
+
+        .check-notification {
+            color: yellow; /* Change this to your desired color for check */
+        }
+        
+        .checkmate-notification {
+            color: red; /* Keep red for checkmate */
             font-weight: bold;
         }
         
@@ -113,6 +121,20 @@
                 max-height: 50px;
             }
         }
+        
+        #sound-icon {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            cursor: pointer;
+            width: 30px;
+            height: 30px;
+        }
+        
+        #sound-icon img {
+            width: 100%;
+            height: 100%;
+        }
     </style>
 </head>
 <body>
@@ -129,206 +151,306 @@
         <div>Select promotion piece:</div>
         <div id="promotion-options"></div>
     </div>
+    <audio id="background-music" src="/audio/Chess Type Beat _ joyful - chess (slowed).mp3" loop autoplay></audio>
+    <div id="sound-icon" onclick="toggleSound()">
+        <img src="/static/sound-on.png" alt="Sound On">
+    </div>
     <script>
-        const board = document.getElementById('chessboard');
-        const capturedWhite = document.getElementById('captured-white-list');
-        const capturedBlack = document.getElementById('captured-black-list');
-        const restartBtn = document.getElementById('restart-btn');
-        const turnDisplay = document.getElementById('turn-display');
-        const checkDisplay = document.getElementById('check-display');
-        const promotionModal = document.getElementById('promotion-modal');
-        const promotionOptions = document.getElementById('promotion-options');
-        let gameState = {};
-        let promoColor = '';
-        let promoIndex = 0;
-        let showGridLabels = true;
+    const board = document.getElementById('chessboard');
+    const capturedWhite = document.getElementById('captured-white-list');
+    const capturedBlack = document.getElementById('captured-black-list');
+    const restartBtn = document.getElementById('restart-btn');
+    const turnDisplay = document.getElementById('turn-display');
+    const checkDisplay = document.getElementById('check-display');
+    const promotionModal = document.getElementById('promotion-modal');
+    const promotionOptions = document.getElementById('promotion-options');
+    const backgroundMusic = document.getElementById('background-music');
+    const soundIcon = document.getElementById('sound-icon').querySelector('img');
+    let gameState = {};
+    let promoColor = '';
+    let promoIndex = 0;
+    let showGridLabels = true;
 
-        function createBoard() {
-            const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-            for (let i = 0; i < 64; i++) {
-                const square = document.createElement('div');
-                square.classList.add('square');
-                if ((Math.floor(i / 8) + i % 8) % 2 === 0) {
-                    square.classList.add('white');
-                } else {
-                    square.classList.add('black');
+    function createBoard() {
+        const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+        for (let i = 0; i < 64; i++) {
+            const square = document.createElement('div');
+            square.classList.add('square');
+            if ((Math.floor(i / 8) + i % 8) % 2 === 0) {
+                square.classList.add('white');
+            } else {
+                square.classList.add('black');
+            }
+            square.dataset.index = i;
+            square.addEventListener('click', () => handleSquareClick(i));
+            
+            const row = 8 - Math.floor(i / 8);
+            const col = files[i % 8];
+            
+            const topLeftLabel = document.createElement('div');
+            topLeftLabel.classList.add('grid-label', 'top-left');
+            topLeftLabel.textContent = `${col}${row}`;
+            
+            square.appendChild(topLeftLabel);
+            
+            board.appendChild(square);
+        }
+    }
+
+    function handleSquareClick(index) {
+        const row = Math.floor(index / 8);
+        const col = index % 8;
+        
+        // Check if there's a piece at the clicked position
+        const whiteIndex = gameState.white_locations.findIndex(loc => loc[0] === col && loc[1] === row);
+        const blackIndex = gameState.black_locations.findIndex(loc => loc[0] === col && loc[1] === row);
+        
+        // If no piece is selected and we clicked on a piece of the current turn's color
+        if (gameState.selection === 100) {
+            if ((gameState.turn_step % 2 === 0 && whiteIndex !== -1) || 
+                (gameState.turn_step % 2 === 1 && blackIndex !== -1)) {
+                const piece_index = gameState.turn_step % 2 === 0 ? whiteIndex : blackIndex;
+                gameState.selection = piece_index;
+                gameState.valid_moves = gameState.turn_step % 2 === 0 ? 
+                    gameState.white_options[piece_index] : 
+                    gameState.black_options[piece_index];
+                updateBoard();
+            }
+        } else {
+            const move = [col, row];
+            const validMove = gameState.valid_moves.some(vm => {
+                if (Array.isArray(vm)) {
+                    return vm[0] === col && vm[1] === row;
                 }
-                square.dataset.index = i;
-                square.addEventListener('click', () => handleSquareClick(i));
-                
-                const row = 8 - Math.floor(i / 8);
-                const col = files[i % 8];
+                return false;
+            });
+            
+            if (validMove) {
+                fetch('/move', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        piece_index: gameState.selection,
+                        move: move
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    gameState = data;
+                    updateBoard();
+                })
+                .catch(error => console.error('Error:', error));
+            } else {
+                // Deselect if clicking on an invalid move location
+                gameState.selection = 100;
+                gameState.valid_moves = [];
+                updateBoard();
+            }
+        }
+    }
+
+    function handlePromotion() {
+        if (gameState.white_promote || gameState.black_promote) {
+            promoColor = gameState.white_promote ? 'white' : 'black';
+            promoIndex = gameState.promo_index;
+            promotionOptions.innerHTML = '';
+            const promotions = promoColor === 'white' ? ['queen', 'rook', 'bishop', 'knight'] : ['queen', 'rook', 'bishop', 'knight'];
+            promotions.forEach(piece => {
+                const option = document.createElement('div');
+                option.classList.add('promotion-option');
+                option.textContent = piece;
+                option.addEventListener('click', () => selectPromotion(piece));
+                promotionOptions.appendChild(option);
+            });
+            promotionModal.style.display = 'block';
+        } else {
+            promotionModal.style.display = 'none';
+        }
+    }
+
+    function selectPromotion(piece) {
+        fetch('/promote', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ piece: piece })
+        })
+        .then(response => response.json())
+        .then(data => {
+            gameState = data;
+            updateBoard();
+        })
+        .catch(error => {
+            console.error('Error promoting pawn:', error);
+        });
+    }
+
+    function updateBoard() {
+        const squares = document.querySelectorAll('.square');
+        squares.forEach(square => {
+            square.innerHTML = '';
+            const index = parseInt(square.dataset.index);
+            const row = Math.floor(index / 8);
+            const col = index % 8;
+
+            // Clear previous valid moves
+            square.classList.remove('valid-move', 'castle-move');
+
+            // Add valid moves highlighting
+            if (gameState.valid_moves) {
+                const isValidMove = gameState.valid_moves.some(move => {
+                    if (Array.isArray(move)) {
+                        return move[0] === col && move[1] === row;
+                    }
+                    return false;
+                });
+                if (isValidMove) {
+                    square.classList.add('valid-move');
+                }
+                const isCastleMove = gameState.valid_moves.some(move => {
+                    if (Array.isArray(move) && move.length === 3 && move[2].includes('castle')) {
+                        return move[0] === col && move[1] === row;
+                    }
+                    return false;
+                });
+                if (isCastleMove) {
+                    square.classList.add('castle-move');
+                }
+            }
+
+            // Add pieces
+            const whiteIndex = gameState.white_locations.findIndex(loc => loc[0] === col && loc[1] === row);
+            const blackIndex = gameState.black_locations.findIndex(loc => loc[0] === col && loc[1] === row);
+
+            if (whiteIndex !== -1) {
+                const piece = gameState.white_pieces[whiteIndex];
+                const img = document.createElement('img');
+                img.src = `/images/Chess_${piece === 'knight' ? 'n' : piece[0]}lt60.png`;
+                img.classList.add('piece-image');
+                square.appendChild(img);
+            } else if (blackIndex !== -1) {
+                const piece = gameState.black_pieces[blackIndex];
+                const img = document.createElement('img');
+                img.src = `/images/Chess_${piece === 'knight' ? 'n' : piece[0]}dt60.png`;
+                img.classList.add('piece-image');
+                square.appendChild(img);
+            }
+
+            // Re-add grid labels if enabled
+            if (showGridLabels) {
+                const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+                const rowLabel = 8 - Math.floor(index / 8);
+                const colLabel = files[index % 8];
                 
                 const topLeftLabel = document.createElement('div');
                 topLeftLabel.classList.add('grid-label', 'top-left');
-                topLeftLabel.textContent = `${col}${row}`;
+                topLeftLabel.textContent = `${colLabel}${rowLabel}`;
                 
                 square.appendChild(topLeftLabel);
-                
-                board.appendChild(square);
             }
+        });
+
+        // Update other game information
+        capturedWhite.textContent = gameState.captured_pieces_white.join(', ');
+        capturedBlack.textContent = gameState.captured_pieces_black.join(', ');
+        const turnColor = gameState.turn_step % 2 === 0 ? 'WHITE' : 'BLACK';
+        turnDisplay.textContent = `Current Turn: ${turnColor}`;
+        
+        if (gameState.check) {
+            checkDisplay.textContent = `${gameState.check.toUpperCase()} IS IN CHECK!`;
+            checkDisplay.className = 'check-indicator check-notification';
+        } else {
+            checkDisplay.textContent = '';
+            checkDisplay.className = 'check-indicator';
         }
-
-        function handleSquareClick(index) {
-            const row = Math.floor(index / 8);
-            const col = index % 8;
-            fetch('/move', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ x: col, y: row })
-            })
-            .then(response => response.json())
-            .then(data => {
-                gameState = data;
-                updateBoard();
-                handlePromotion();
-            })
-            .catch(error => {
-                console.error('Error selecting square:', error);
-            });
+        
+        if (gameState.game_over) {
+            checkDisplay.textContent = `${gameState.winner.toUpperCase()} WINS BY CHECKMATE!`;
+            checkDisplay.className = 'check-indicator checkmate-notification';
         }
+    }
 
-        function handlePromotion() {
-            if (gameState.white_promote || gameState.black_promote) {
-                promoColor = gameState.white_promote ? 'white' : 'black';
-                promoIndex = gameState.promo_index;
-                promotionOptions.innerHTML = '';
-                const promotions = promoColor === 'white' ? ['queen', 'rook', 'bishop', 'knight'] : ['queen', 'rook', 'bishop', 'knight'];
-                promotions.forEach(piece => {
-                    const option = document.createElement('div');
-                    option.classList.add('promotion-option');
-                    option.textContent = piece;
-                    option.addEventListener('click', () => selectPromotion(piece));
-                    promotionOptions.appendChild(option);
-                });
-                promotionModal.style.display = 'block';
-            } else {
-                promotionModal.style.display = 'none';
-            }
-        }
+    function toggleGridLabels() {
+        showGridLabels = !showGridLabels;
+        updateBoard();
+    }
 
-        function selectPromotion(piece) {
-            fetch('/promote', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ piece: piece })
-            })
-            .then(response => response.json())
-            .then(data => {
-                gameState = data;
-                updateBoard();
-            })
-            .catch(error => {
-                console.error('Error promoting pawn:', error);
-            });
-        }
-
-        function updateBoard() {
-            const squares = document.querySelectorAll('.square');
-            squares.forEach(square => {
-                square.innerHTML = '';
-                const index = parseInt(square.dataset.index);
-                const row = Math.floor(index / 8);
-                const col = index % 8;
-                const position = [col, row];
-                const whiteIndex = gameState.white_locations.findIndex(loc => loc[0] === col && loc[1] === row);
-                const blackIndex = gameState.black_locations.findIndex(loc => loc[0] === col && loc[1] === row);
-
-                if (whiteIndex !== -1) {
-                    const piece = gameState.white_pieces[whiteIndex];
-                    const img = document.createElement('img');
-                    img.src = `/images/${piece}_white.png`;
-                    img.classList.add('piece-image');
-                    square.appendChild(img);
-                } else if (blackIndex !== -1) {
-                    const piece = gameState.black_pieces[blackIndex];
-                    const img = document.createElement('img');
-                    img.src = `/images/${piece}_black.png`;
-                    img.classList.add('piece-image');
-                    square.appendChild(img);
-                }
-
-                // Clear previous valid moves
-                square.classList.remove('valid-move', 'castle-move');
-
-                // Add valid moves
-                gameState.valid_moves.forEach(move => {
-                    const [moveCol, moveRow, moveType] = move;
-                    if (moveCol === col && moveRow === row) {
-                        if (moveType && moveType.includes('castle')) {
-                            square.classList.add('castle-move');
-                        } else {
-                            square.classList.add('valid-move');
-                        }
-                    }
-                });
-
-                // Re-add grid labels if enabled
-                if (showGridLabels) {
-                    const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-                    const rowLabel = 8 - Math.floor(index / 8);
-                    const colLabel = files[index % 8];
-                    
-                    const topLeftLabel = document.createElement('div');
-                    topLeftLabel.classList.add('grid-label', 'top-left');
-                    topLeftLabel.textContent = `${colLabel}${rowLabel}`;
-                    
-                    square.appendChild(topLeftLabel);
-                }
-            });
-
-            capturedWhite.textContent = gameState.captured_pieces_white.join(', ');
-            capturedBlack.textContent = gameState.captured_pieces_black.join(', ');
-
-            // Update turn display
-            turnDisplay.textContent = `Current Turn: ${gameState.turn_step % 2 === 0 ? 'WHITE' : 'BLACK'}`;
-
-            // Update check display
-            checkDisplay.textContent = gameState.check ? `${gameState.check.toUpperCase()} IS IN CHECK!` : '';
-
-            // Update game result
-            if (gameState.game_over) {
-                turnDisplay.textContent = `GAME OVER - ${gameState.winner.toUpperCase()} WINS!`;
-            }
-        }
-
-        function toggleGridLabels() {
-            showGridLabels = !showGridLabels;
+    function restartGame() {
+        fetch('/restart', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Reset the game state with all the necessary properties
+            gameState = {
+                white_pieces: data.white_pieces,
+                white_locations: data.white_locations,
+                black_pieces: data.black_pieces,
+                black_locations: data.black_locations,
+                captured_pieces_white: data.captured_pieces_white,
+                captured_pieces_black: data.captured_pieces_black,
+                turn_step: data.turn_step,
+                selection: data.selection,
+                valid_moves: data.valid_moves,
+                white_options: data.white_options,
+                black_options: data.black_options,
+                winner: data.winner,
+                game_over: data.game_over,
+                check: data.check,
+                white_moved: data.white_moved,
+                black_moved: data.black_moved
+            };
             updateBoard();
-        }
+        })
+        .catch(error => {
+            console.error('Error restarting game:', error);
+        });
+    }
 
-        function restartGame() {
-            fetch('/restart', {
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                gameState = data;
-                updateBoard();
-            })
-            .catch(error => {
-                console.error('Error restarting game:', error);
-            });
+    function toggleSound() {
+        if (backgroundMusic.muted) {
+            backgroundMusic.muted = false;
+            soundIcon.src = '/static/sound-on.png';
+            backgroundMusic.play(); // This will resume playback
+        } else {
+            backgroundMusic.muted = true;
+            soundIcon.src = '/static/sound-off.png';
         }
+    }
 
-        window.onload = () => {
-            createBoard();
-            fetch('/state', {
-                method: 'GET'
-            })
-            .then(response => response.json())
-            .then(data => {
-                gameState = data;
-                updateBoard();
-            })
-            .catch(error => {
-                console.error('Error fetching game state:', error);
-            });
-        };
+    window.onload = () => {
+        createBoard();
+        fetch('/state', {
+            method: 'GET'
+        })
+        .then(response => response.json())
+        .then(data => {
+            gameState = data;
+            updateBoard();
+            // Add this code to handle autoplay
+            backgroundMusic.muted = false;
+            // Try to play immediately
+            let playPromise = backgroundMusic.play();
+            
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    // Auto-play was prevented
+                    console.log("Autoplay was prevented by browser");
+                    // Add a click event listener to the document to enable audio
+                    document.addEventListener('click', function enableAudio() {
+                        backgroundMusic.play();
+                        document.removeEventListener('click', enableAudio);
+                    }, { once: true });
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching game state:', error);
+        });
+    };
     </script>
 </body>
 </html>
