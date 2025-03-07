@@ -364,19 +364,22 @@ def check_options(pieces, locations, turn):
             all_moves_list.append([])
             continue
         if turn == 'white' or turn == 'black':
+            # Use deep copies of board state for accuracy
+            sim_white = copy.deepcopy(white_locations)
+            sim_black = copy.deepcopy(black_locations)
             piece = pieces[i]
             if piece == 'pawn':
-                moves_list = check_pawn(locations[i], turn)
+                moves_list = check_pawn(locations[i], turn, sim_white, sim_black)
             elif piece == 'rook':
-                moves_list = check_rook(locations[i], turn)
+                moves_list = check_rook(locations[i], turn, sim_white, sim_black)
             elif piece == 'knight':
-                moves_list = check_knight(locations[i], turn)
+                moves_list = check_knight(locations[i], turn, sim_white, sim_black)
             elif piece == 'bishop':
-                moves_list = check_bishop(locations[i], turn)
+                moves_list = check_bishop(locations[i], turn, sim_white, sim_black)
             elif piece == 'queen':
-                moves_list = check_queen(locations[i], turn)
+                moves_list = check_queen(locations[i], turn, sim_white, sim_black)
             elif piece == 'king':
-                moves_list = check_king(locations[i], turn, i)
+                moves_list = check_king(locations[i], turn, i, sim_white, sim_black)
             all_moves_list.append(moves_list)
     return all_moves_list
 
