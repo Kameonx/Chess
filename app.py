@@ -128,12 +128,14 @@ def check_king(position, color, index):
         initial_king = (4, 0)
         kingside_rook_pos = (7, 0)
         queenside_rook_pos = (0, 0)
+        enemy_color = 'black'
     else:
         friends_list = black_locations
         moved = black_moved
         initial_king = (4, 7)
         kingside_rook_pos = (7, 7)
         queenside_rook_pos = (0, 7)
+        enemy_color = 'white'
     
     # Regular king moves
     targets = [(1, 0), (1, 1), (1, -1), (-1, 0), (-1, 1), (-1, -1), (0, 1), (0, -1)]
@@ -146,43 +148,69 @@ def check_king(position, color, index):
     if position == initial_king and not moved[index]:
         # Kingside castling: ensure rook in kingside position hasn't moved and squares between are empty
         try:
-            rook_index = white_locations.index(kingside_rook_pos) if color=='white' else black_locations.index(kingside_rook_pos)
+            rook_index = white_locations.index(kingside_rook_pos) if color == 'white' else black_locations.index(kingside_rook_pos)
             if not moved[rook_index]:
                 # Check squares between king and rook
-                if color=='white':
-                    if (5,0) not in white_locations+black_locations and (6,0) not in white_locations+black_locations:
-                        castle_moves.append((6, 0, 'castle_kingside'))
+                if color == 'white':
+                    if (5, 0) not in white_locations + black_locations and (6, 0) not in white_locations + black_locations:
+                        if not is_check(color) and not is_check(color, temp_white_locations=[(5, 0)]) and not is_check(color, temp_white_locations=[(6, 0)]):
+                            castle_moves.append((6, 0, 'castle_kingside'))
                 else:
-                    if (5,7) not in white_locations+black_locations and (6,7) not in white_locations+black_locations:
-                        castle_moves.append((6, 7, 'castle_kingside'))
+                    if (5, 7) not in white_locations + black_locations and (6, 7) not in white_locations + black_locations:
+                        if not is_check(color) and not is_check(color, temp_black_locations=[(5, 7)]) and not is_check(color, temp_black_locations=[(6, 7)]):
+                            castle_moves.append((6, 7, 'castle_kingside'))
         except ValueError:
             pass
         # Queenside castling: similar check for queenside rook and clear path
         try:
-            rook_index = white_locations.index(queenside_rook_pos) if color=='white' else black_locations.index(queenside_rook_pos)
+            rook_index = white_locations.index(queenside_rook_pos) if color == 'white' else black_locations.index(queenside_rook_pos)
             if not moved[rook_index]:
-                if color=='white':
-                    if (1,0) not in white_locations+black_locations and (2,0) not in white_locations+black_locations and (3,0) not in white_locations+black_locations:
-                        castle_moves.append((2, 0, 'castle_queenside'))
+                if color == 'white':
+                    if (1, 0) not in white_locations + black_locations and (2, 0) not in white_locations + black_locations and (3, 0) not in white_locations + black_locations:
+                        if not is_check(color) and not is_check(color, temp_white_locations=[(2, 0)]) and not is_check(color, temp_white_locations=[(3, 0)]):
+                            castle_moves.append((2, 0, 'castle_queenside'))
                 else:
-                    if (1,7) not in white_locations+black_locations and (2,7) not in white_locations+black_locations and (3,7) not in white_locations+black_locations:
-                        castle_moves.append((2, 7, 'castle_queenside'))
+                    if (1, 7) not in white_locations + black_locations and (2, 7) not in white_locations + black_locations and (3, 7) not in white_locations + black_locations:
+                        if not is_check(color) and not is_check(color, temp_black_locations=[(2, 7)]) and not is_check(color, temp_black_locations=[(3, 7)]):
+                            castle_moves.append((2, 7, 'castle_queenside'))
         except ValueError:
             pass
     moves_list.extend(castle_moves)
     return moves_list
 
 def check_valid_moves(locations, options, selection):
+    """Returns valid moves that don't put or leave own king in check"""
     if selection == 100:
         return []
     
-    valid_moves = options[selection].copy()
     color = 'white' if turn_step % 2 == 0 else 'black'
+    valid_moves = []
     
-    # Filter moves to only include those that don't leave own king in check
-    safe_moves = []
-    for move in valid_moves:
-        # Create temporary copies of game state
+    # Get all possible moves for the selected piece
+    if color == 'white':
+        piece = white_pieces[selection]
+        current_pos = white_locations[selection]
+    else:
+        piece = black_pieces[selection]
+        current_pos = black_locations[selection]
+    
+    # Get moves based on piece type
+    if piece == 'pawn':
+        all_moves = check_pawn(current_pos, color)
+    elif piece == 'rook':
+        all_moves = check_rook(current_pos, color)
+    elif piece == 'knight':
+        all_moves = check_knight(current_pos, color)
+    elif piece == 'bishop':
+        all_moves = check_bishop(current_pos, color)
+    elif piece == 'queen':
+        all_moves = check_queen(current_pos, color)
+    elif piece == 'king':
+        all_moves = check_king(current_pos, color, selection)
+    
+    # Test each move to see if it leaves own king in check
+    for move in all_moves:
+        # Create temporary game state
         temp_white_locations = white_locations[:]
         temp_black_locations = black_locations[:]
         temp_white_pieces = white_pieces[:]
@@ -203,86 +231,122 @@ def check_valid_moves(locations, options, selection):
                 temp_white_pieces.pop(captured_idx)
             temp_black_locations[selection] = move_coords
         
-        # If the move doesn't leave own king in check, it's valid
+        # If move doesn't leave own king in check, it's valid
         if not is_check(color, temp_white_locations, temp_black_locations, temp_white_pieces, temp_black_pieces):
-            safe_moves.append(move)
-            
-    return safe_moves
+            valid_moves.append(move)
+    
+    return valid_moves
 
 def is_check(color, temp_white_locations=None, temp_black_locations=None, temp_white_pieces=None, temp_black_pieces=None):
+    """Check if the given color's king is in check"""
     # Use temporary locations if provided, otherwise use current game state
     white_locs = temp_white_locations if temp_white_locations is not None else white_locations
     black_locs = temp_black_locations if temp_black_locations is not None else black_locations
     white_pcs = temp_white_pieces if temp_white_pieces is not None else white_pieces
     black_pcs = temp_black_pieces if temp_black_pieces is not None else black_pieces
     
-    if color == 'white':
-        king_index = white_pcs.index('king')
-        king_pos = white_locs[king_index]
-        attacker_locations = black_locs
-        attacker_pieces = black_pcs
-    else:
-        king_index = black_pcs.index('king')
-        king_pos = black_locs[king_index]
-        attacker_locations = white_locs
-        attacker_pieces = white_pcs
-    
-    # Check all enemy pieces for attacks on the king
-    for i in range(len(attacker_pieces)):
-        piece = attacker_pieces[i]
-        location = attacker_locations[i]
-        moves = []
+    try:
+        if color == 'white':
+            king_index = white_pcs.index('king')
+            king_pos = white_locs[king_index]
+            enemy_pieces = black_pcs
+            enemy_locations = black_locs
+        else:
+            king_index = black_pcs.index('king')
+            king_pos = black_locs[king_index]
+            enemy_pieces = white_pcs
+            enemy_locations = white_locs
+            
+        # Check if any enemy piece can attack the king
+        for i, piece in enumerate(enemy_pieces):
+            pos = enemy_locations[i]
+            if piece == 'pawn':
+                moves = check_pawn(pos, 'black' if color == 'white' else 'white')
+            elif piece == 'rook':
+                moves = check_rook(pos, 'black' if color == 'white' else 'white')
+            elif piece == 'knight':
+                moves = check_knight(pos, 'black' if color == 'white' else 'white')
+            elif piece == 'bishop':
+                moves = check_bishop(pos, 'black' if color == 'white' else 'white')
+            elif piece == 'queen':
+                moves = check_queen(pos, 'black' if color == 'white' else 'white')
+            elif piece == 'king':
+                moves = check_king(pos, 'black' if color == 'white' else 'white', i)
+                
+            if king_pos in moves:
+                return True
+                
+    except ValueError:
+        # If king not found (shouldn't happen in normal play)
+        return False
         
-        # Calculate potential moves for each piece type
-        if piece == 'pawn':
-            moves = check_pawn(location, 'black' if color == 'white' else 'white')
-        elif piece == 'rook':
-            moves = check_rook(location, 'black' if color == 'white' else 'white')
-        elif piece == 'knight':
-            moves = check_knight(location, 'black' if color == 'white' else 'white')
-        elif piece == 'bishop':
-            moves = check_bishop(location, 'black' if color == 'white' else 'white')
-        elif piece == 'queen':
-            moves = check_queen(location, 'black' if color == 'white' else 'white')
-        elif piece == 'king':
-            moves = check_king(location, 'black' if color == 'white' else 'white', i)
-            
-        if king_pos in moves:
-            return True
-            
     return False
 
 def check_mate(color):
     """
     Check if the given color is in checkmate by:
     1. Verifying the king is in check
-    2. Testing all possible moves for all pieces
-    3. Only declaring checkmate if no legal moves exist
+    2. Testing ALL possible moves for ALL pieces to see if any can get out of check
     """
-    # First verify the king is in check
+    # First ensure the king is actually in check
     if not is_check(color):
         return False
-
-    # Get the appropriate pieces and their locations
+    
+    # Get all pieces and their locations
     if color == 'white':
         pieces = white_pieces
         locations = white_locations
-        options = white_options
     else:
         pieces = black_pieces
         locations = black_locations
-        options = black_options
-
-    # Try every possible move for every piece
+    
+    # For each piece
     for i in range(len(pieces)):
-        # Get all theoretically valid moves for this piece
-        valid_moves = check_valid_moves(locations, options, i)
+        piece = pieces[i]
+        current_pos = locations[i]
         
-        # If any valid move exists that gets out of check, it's not checkmate
-        if valid_moves:
-            return False
+        # Get all possible moves for this piece
+        if piece == 'pawn':
+            moves = check_pawn(current_pos, color)
+        elif piece == 'rook':
+            moves = check_rook(current_pos, color)
+        elif piece == 'knight':
+            moves = check_knight(current_pos, color)
+        elif piece == 'bishop':
+            moves = check_bishop(current_pos, color)
+        elif piece == 'queen':
+            moves = check_queen(current_pos, color)
+        elif piece == 'king':
+            moves = check_king(current_pos, color, i)
             
-    # If we've tried all pieces and found no valid moves, it's checkmate
+        # Test each move to see if it gets out of check
+        for move in moves:
+            # Create temporary game state
+            temp_white_locations = white_locations[:]
+            temp_black_locations = black_locations[:]
+            temp_white_pieces = white_pieces[:]
+            temp_black_pieces = black_pieces[:]
+            
+            # Apply the move
+            move_coords = move if isinstance(move, tuple) else move[:2]
+            if color == 'white':
+                if move_coords in black_locations:
+                    captured_idx = black_locations.index(move_coords)
+                    temp_black_locations.pop(captured_idx)
+                    temp_black_pieces.pop(captured_idx)
+                temp_white_locations[i] = move_coords
+            else:
+                if move_coords in white_locations:
+                    captured_idx = white_locations.index(move_coords)
+                    temp_white_locations.pop(captured_idx)
+                    temp_white_pieces.pop(captured_idx)
+                temp_black_locations[i] = move_coords
+            
+            # If this move gets us out of check, it's not checkmate
+            if not is_check(color, temp_white_locations, temp_black_locations, temp_white_pieces, temp_black_pieces):
+                return False
+    
+    # If we've tried every move for every piece and none get us out of check, it's checkmate
     return True
 
 def check_options(pieces, locations, turn):
@@ -306,12 +370,13 @@ def check_options(pieces, locations, turn):
         all_moves_list.append(moves_list)
     return all_moves_list
 
-def getNotification(check_val, game_over, turn_step):
-    # If game is over, announce checkmate with winner.
+def getNotification(check_val, game_over, turn_step, checkmate=False):
     if game_over:
-        # turn_step was incremented after the move so winner is opposite of current turn:
         winner = 'Black' if turn_step % 2 == 1 else 'White'
-        return {"message": f"Checkmate! {winner} wins.", "class": "checkmate-notification"}
+        return {"message": f"{winner.upper()} WINS BY CAPTURING THE KING!", "class": "checkmate-notification"}
+    elif checkmate:
+        in_check = 'White' if turn_step % 2 == 1 else 'Black'
+        return {"message": f"CHECKMATE! {in_check} king can be captured!", "class": "checkmate-notification"}
     elif check_val:
         return {"message": f"{check_val.capitalize()} is in check!", "class": "check-notification"}
     else:
@@ -333,9 +398,6 @@ def make_move():
     piece_index = data['piece_index']
     move = tuple(data['move'])
     
-    # Store original state in case we need to revert
-    original_locations = white_locations.copy() if turn_step % 2 == 0 else black_locations.copy()
-    
     # Determine current arrays based on turn
     if turn_step % 2 == 0:
         pieces = white_pieces
@@ -352,9 +414,14 @@ def make_move():
 
     # Handle captures BEFORE moving pieces
     captured_index = None
+    checkmate_state = False
     if move in enemies_list:
         captured_index = enemies_list.index(move)
-        
+        # Only end game if king is captured
+        if enemies_pieces[captured_index] == 'king':
+            game_over = True
+            winner = 'white' if turn_step % 2 == 0 else 'black'
+            
     # Update piece location
     locations[piece_index] = move
     moved[piece_index] = True
@@ -387,30 +454,48 @@ def make_move():
         enemies_pieces.pop(captured_index)
         enemies_list.pop(captured_index)
     
-    # Handle pawn promotion
+    # Handle pawn promotion only when pawn reaches last rank:
+    promotion_data = None
     if pieces[piece_index] == 'pawn':
+        # White pawn must reach y === 7; Black pawn must reach y === 0
         if (turn_step % 2 == 0 and move[1] == 7) or (turn_step % 2 == 1 and move[1] == 0):
-            pieces[piece_index] = 'queen'
+            promotion_data = {
+                'color': 'white' if turn_step % 2 == 0 else 'black',
+                'index': piece_index
+            }
     
     # Recalculate options
     black_options = check_options(black_pieces, black_locations, 'black')
     white_options = check_options(white_pieces, white_locations, 'white')
     
-    # Check status update
+    # Modified check status update
     current_side = 'white' if turn_step % 2 == 1 else 'black'
-    if is_check(current_side):
-        check_val = current_side
-        if check_mate(current_side):  # Only end game on checkmate
-            game_over = True
-            winner = 'black' if turn_step % 2 == 1 else 'white'
+    opponent_side = 'black' if turn_step % 2 == 1 else 'white'
+    
+    if not game_over:
+        check_val = ''
+        checkmate_state = False
+        
+        # First check if any side is in checkmate
+        if is_check(current_side) and check_mate(current_side):
+            check_val = current_side
+            checkmate_state = True
+        elif is_check(opponent_side) and check_mate(opponent_side):
+            check_val = opponent_side
+            checkmate_state = True
+        # If no checkmate, check for regular check
+        elif is_check(current_side):
+            check_val = current_side
+        elif is_check(opponent_side):
+            check_val = opponent_side
     else:
         check_val = ''
-        game_over = False  # Ensure game continues if not checkmate
+        checkmate_state = False
     
     turn_step += 1
     selection = 100
     valid_moves = []
-    notification = getNotification(check_val, game_over, turn_step)
+    notification = getNotification(check_val, game_over, turn_step, checkmate_state)
     
     return jsonify({
         'white_pieces': white_pieces,
@@ -429,7 +514,9 @@ def make_move():
         'check': check_val,
         'notification': notification,
         'white_moved': white_moved,
-        'black_moved': black_moved
+        'black_moved': black_moved,
+        'checkmate': checkmate_state,  # Add this field
+        'promotion': promotion_data  # Only set if the pawn is at the promotion rank
     })
 
 @app.route('/images/<path:filename>')
@@ -462,9 +549,19 @@ def get_state():
     # Recalculate check value freshly instead of reusing the global variable
     current_check = ''
     current_side = 'white' if turn_step % 2 == 1 else 'black'
+    opponent_side = 'black' if turn_step % 2 == 1 else 'white'
+    
+    current_check = ''
+    checkmate_state = False
+    
     if is_check(current_side):
         current_check = current_side
-    notification = getNotification(current_check, game_over, turn_step)
+        checkmate_state = check_mate(current_side)
+    elif is_check(opponent_side):
+        current_check = opponent_side
+        checkmate_state = check_mate(opponent_side)
+        
+    notification = getNotification(current_check, game_over, turn_step, checkmate_state)
     
     return jsonify({
         'white_pieces': white_pieces,
@@ -483,28 +580,42 @@ def get_state():
         'check': current_check,
         'notification': notification,
         'white_moved': white_moved,
-        'black_moved': black_moved
+        'black_moved': black_moved,
+        'checkmate': checkmate_state  # Add this field
     })
 
 @app.route('/promote', methods=['POST'])
 def promote():
-    global white_pieces, black_pieces, white_locations, black_locations
-
+    """Handle pawn promotion with player-selected piece"""
+    global white_pieces, black_pieces
+    
     data = request.json
     color = data['color']
     piece = data['piece']
     index = data['index']
-
+    
+    # Validate the piece type
+    valid_pieces = ['queen', 'rook', 'bishop', 'knight']
+    if piece not in valid_pieces:
+        return jsonify({'error': 'Invalid promotion piece'}), 400
+    
+    # Update the piece
     if color == 'white':
         white_pieces[index] = piece
     else:
         black_pieces[index] = piece
-
+        
+    # Recalculate options after promotion
+    black_options = check_options(black_pieces, black_locations, 'black')
+    white_options = check_options(white_pieces, white_locations, 'white')
+    
     return jsonify({
         'white_pieces': white_pieces,
-        'black_pieces': black_pieces,
         'white_locations': white_locations,
-        'black_locations': black_locations
+        'black_pieces': black_pieces,
+        'black_locations': black_locations,
+        'white_options': white_options,
+        'black_options': black_options
     })
 
 @app.route('/reset', methods=['POST'])
