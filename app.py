@@ -135,74 +135,88 @@ def check_queen(position, color, cur_white_locations=None, cur_black_locations=N
     moves_list.extend(check_bishop(position, color, cur_white_locations, cur_black_locations))
     return moves_list
 
+def check_king_moves(position, color, index, cur_white_locations=None, cur_black_locations=None):
+    white_locs = cur_white_locations if cur_white_locations is not None else white_locations
+    black_locs = cur_black_locations if cur_black_locations is not None else black_locations
+    moves_list = []
+    if color == 'white':
+        friends_list = white_locs
+    else:
+        friends_list = black_locs
+    targets = [(1, 0), (1, 1), (1, -1), (-1, 0), (-1, 1), (-1, -1), (0, 1), (0, -1)]
+    for t in targets:
+        target = (position[0] + t[0], position[1] + t[1])
+        if 0 <= target[0] <= 7 and 0 <= target[1] <= 7 and target not in friends_list:
+            moves_list.append(target)
+    return moves_list
+
 def check_king(position, color, index, cur_white_locations=None, cur_black_locations=None):
     white_locs = cur_white_locations if cur_white_locations is not None else white_locations
     black_locs = cur_black_locations if cur_black_locations is not None else black_locations
     moves_list = []
     castle_moves = []
-    if color=='white':
+    if color == 'white':
         friends_list = white_locs
         moved = white_moved
-        initial_king = (4,0)
-        kingside_rook_pos = (7,0)
-        queenside_rook_pos = (0,0)
+        initial_king = (4, 0)
+        kingside_rook_pos = (7, 0)
+        queenside_rook_pos = (0, 0)
     else:
         friends_list = black_locs
         moved = black_moved
-        initial_king = (4,7)
-        kingside_rook_pos = (7,7)
-        queenside_rook_pos = (0,7)
-    targets = [(1,0),(1,1),(1,-1),(-1,0),(-1,1),(-1,-1),(0,1),(0,-1)]
+        initial_king = (4, 7)
+        kingside_rook_pos = (7, 7)
+        queenside_rook_pos = (0, 7)
+    targets = [(1, 0), (1, 1), (1, -1), (-1, 0), (-1, 1), (-1, -1), (0, 1), (0, -1)]
     for t in targets:
-        target = (position[0]+t[0], position[1]+t[1])
-        if 0<=target[0]<=7 and 0<=target[1]<=7 and target not in friends_list:
+        target = (position[0] + t[0], position[1] + t[1])
+        if 0 <= target[0] <= 7 and 0 <= target[1] <= 7 and target not in friends_list:
             moves_list.append(target)
-    if position == initial_king and not moved[index]:
+    if position == initial_king and not moved[index] and not is_check(color, cur_white_locations, cur_black_locations):
         try:
-            rook_index = white_locs.index(kingside_rook_pos) if color=='white' else black_locs.index(kingside_rook_pos)
+            rook_index = white_locs.index(kingside_rook_pos) if color == 'white' else black_locs.index(kingside_rook_pos)
             if not moved[rook_index]:
-                if color=='white':
-                    if (5,0) not in white_locs+black_locs and (6,0) not in white_locs+black_locs:
-                        # Check the intermediate squares by simulating the king's move
+                if color == 'white':
+                    if (5, 0) not in white_locs + black_locs and (6, 0) not in white_locs + black_locs:
                         temp1 = copy.deepcopy(white_locs)
-                        temp1[white_pieces.index('king')] = (5,0)
+                        temp1[white_pieces.index('king')] = (5, 0)
                         temp2 = copy.deepcopy(white_locs)
-                        temp2[white_pieces.index('king')] = (6,0)
+                        temp2[white_pieces.index('king')] = (6, 0)
                         if (not is_check(color, cur_white_locations=temp1, cur_black_locations=black_locs) and
-                            not is_check(color, cur_white_locations=temp2, cur_black_locations=black_locs)):
-                            castle_moves.append((6,0,'castle_kingside'))
+                                not is_check(color, cur_white_locations=temp2, cur_black_locations=black_locs)):
+                            castle_moves.append((6, 0, 'castle_kingside'))
                 else:
-                    if (5,7) not in white_locs+black_locs and (6,7) not in white_locs+black_locs:
+                    if (5, 7) not in white_locs + black_locs and (6, 7) not in white_locs + black_locs:
                         temp1 = copy.deepcopy(black_locs)
-                        temp1[black_pieces.index('king')] = (5,7)
+                        temp1[black_pieces.index('king')] = (5, 7)
                         temp2 = copy.deepcopy(black_locs)
-                        temp2[black_pieces.index('king')] = (6,7)
+                        temp2[black_pieces.index('king')] = (6, 7)
                         if (not is_check(color, cur_black_locations=temp1, cur_white_locations=white_locs) and
-                            not is_check(color, cur_black_locations=temp2, cur_white_locations=white_locs)):
-                            castle_moves.append((6,7,'castle_kingside'))
+                                not is_check(color, cur_black_locations=temp2, cur_white_locations=white_locs)):
+                            castle_moves.append((6, 7, 'castle_kingside'))
         except ValueError:
             pass
         try:
-            rook_index = white_locs.index(queenside_rook_pos) if color=='white' else black_locs.index(queenside_rook_pos)
+            rook_index = white_locs.index(queenside_rook_pos) if color == 'white' else black_locs.index(queenside_rook_pos)
             if not moved[rook_index]:
-                if color=='white':
-                    if (1,0) not in white_locs+black_locs and (2,0) not in white_locs+black_locs and (3,0) not in white_locs+black_locs:
+                if color == 'white':
+                    if (1, 0) not in white_locs + black_locs and (2, 0) not in white_locs + black_locs and (3, 0) not in white_locs + black_locs:
                         temp1 = copy.deepcopy(white_locs)
-                        temp1[white_pieces.index('king')] = (2,0)
+                        temp1[white_pieces.index('king')] = (2, 0)
                         temp2 = copy.deepcopy(white_locs)
-                        temp2[white_pieces.index('king')] = (3,0)
+                        temp2[white_pieces.index('king')] = (3, 0)
                         if (not is_check(color, cur_white_locations=temp1, cur_black_locations=black_locs) and
-                            not is_check(color, cur_white_locations=temp2, cur_black_locations=black_locs)):
-                            castle_moves.append((2,0,'castle_queenside'))
+                                not is_check(color, cur_white_locations=temp2, cur_black_locations=black_locs)):
+                            castle_moves.append((2, 0, 'castle_queenside'))
                 else:
-                    if (1,7) not in white_locs+black_locs and (2,7) not in white_locs+black_locs and (3,7) not in white_locs+black_locs:
+                    if (1, 7) not in white_locs + black_locs and (2, 7) not in white_locs + black_locs and (3, 7) not in white_locs + black_locs:
                         temp1 = copy.deepcopy(black_locs)
-                        temp1[black_pieces.index('king')] = (2,7)
+                        temp1[black_pieces.index('king')] = (2, 7)
                         temp2 = copy.deepcopy(black_locs)
-                        temp2[black_pieces.index('king')] = (3,7)
+                        temp2[black_pieces.index('king')] = (3, 7)
                         if (not is_check(color, cur_black_locations=temp1, cur_white_locations=white_locs) and
-                            not is_check(color, cur_black_locations=temp2, cur_white_locations=white_locs)):
-                            castle_moves.append((2,7,'castle_queenside'))
+                                not is_check(color, cur_black_locations=temp2, cur_white_locations=white_locs)):
+                            castle_moves.append((2, 7, 'castle_queenside'))
         except ValueError:
             pass
     moves_list.extend(castle_moves)
@@ -265,7 +279,7 @@ def is_check(color, cur_white_locations=None, cur_black_locations=None, cur_whit
     white_pcs = cur_white_pieces if cur_white_pieces is not None else white_pieces
     black_pcs = cur_black_pieces if cur_black_pieces is not None else black_pieces
     try:
-        if color=='white':
+        if color == 'white':
             if 'king' not in white_pcs:
                 return False
             king_index = white_pcs.index('king')
@@ -283,18 +297,18 @@ def is_check(color, cur_white_locations=None, cur_black_locations=None, cur_whit
             if piece is None:
                 continue
             pos = enemy_locs[i]
-            if piece=='pawn':
-                moves = check_pawn(pos, 'black' if color=='white' else 'white', cur_white_locations, cur_black_locations)
-            elif piece=='rook':
-                moves = check_rook(pos, 'black' if color=='white' else 'white', cur_white_locations, cur_black_locations)
-            elif piece=='knight':
-                moves = check_knight(pos, 'black' if color=='white' else 'white', cur_white_locations, cur_black_locations)
-            elif piece=='bishop':
-                moves = check_bishop(pos, 'black' if color=='white' else 'white', cur_white_locations, cur_black_locations)
-            elif piece=='queen':
-                moves = check_queen(pos, 'black' if color=='white' else 'white', cur_white_locations, cur_black_locations)
-            elif piece=='king':
-                moves = check_king(pos, 'black' if color=='white' else 'white', i, cur_white_locations, cur_black_locations)
+            if piece == 'pawn':
+                moves = check_pawn(pos, 'black' if color == 'white' else 'white', cur_white_locations, cur_black_locations)
+            elif piece == 'rook':
+                moves = check_rook(pos, 'black' if color == 'white' else 'white', cur_white_locations, cur_black_locations)
+            elif piece == 'knight':
+                moves = check_knight(pos, 'black' if color == 'white' else 'white', cur_white_locations, cur_black_locations)
+            elif piece == 'bishop':
+                moves = check_bishop(pos, 'black' if color == 'white' else 'white', cur_white_locations, cur_black_locations)
+            elif piece == 'queen':
+                moves = check_queen(pos, 'black' if color == 'white' else 'white', cur_white_locations, cur_black_locations)
+            elif piece == 'king':
+                moves = check_king_moves(pos, 'black' if color == 'white' else 'white', i, cur_white_locations, cur_black_locations)
             if king_pos in moves:
                 return True
     except ValueError:
@@ -305,8 +319,8 @@ def check_mate(color):
     """Return True if no legal move exists for piece(s) to remove check"""
     if not is_check(color):
         return False
-    pieces = white_pieces if color=='white' else black_pieces
-    locations = white_locations if color=='white' else black_locations
+    pieces = white_pieces if color == 'white' else black_pieces
+    locations = white_locations if color == 'white' else black_locations
     for i in range(len(pieces)):
         if pieces[i] is None:
             continue
@@ -315,17 +329,17 @@ def check_mate(color):
         sim_white_pieces = copy.deepcopy(white_pieces)
         sim_black_pieces = copy.deepcopy(black_pieces)
         current_pos = locations[i]
-        if pieces[i]=='pawn':
+        if pieces[i] == 'pawn':
             moves = check_pawn(current_pos, color, sim_white, sim_black)
-        elif pieces[i]=='rook':
+        elif pieces[i] == 'rook':
             moves = check_rook(current_pos, color, sim_white, sim_black)
-        elif pieces[i]=='knight':
+        elif pieces[i] == 'knight':
             moves = check_knight(current_pos, color, sim_white, sim_black)
-        elif pieces[i]=='bishop':
+        elif pieces[i] == 'bishop':
             moves = check_bishop(current_pos, color, sim_white, sim_black)
-        elif pieces[i]=='queen':
+        elif pieces[i] == 'queen':
             moves = check_queen(current_pos, color, sim_white, sim_black)
-        elif pieces[i]=='king':
+        elif pieces[i] == 'king':
             moves = check_king(current_pos, color, i, sim_white, sim_black)
         for move in moves:
             sim_white = copy.deepcopy(white_locations)
@@ -333,10 +347,10 @@ def check_mate(color):
             sim_white_pieces = copy.deepcopy(white_pieces)
             sim_black_pieces = copy.deepcopy(black_pieces)
             move_coords = move if isinstance(move, tuple) else move[:2]
-            if color=='white':
+            if color == 'white':
                 if move_coords in black_locations:
                     captured_idx = black_locations.index(move_coords)
-                    sim_black[captured_idx] = (-1,-1)
+                    sim_black[captured_idx] = (-1, -1)
                     sim_black_pieces[captured_idx] = None
                 sim_white[i] = move_coords
             else:
