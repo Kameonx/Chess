@@ -17,7 +17,7 @@ white_locations = [(0, 0), (1, 0), (2, 0), (3, 0), (4, 0), (5, 0), (6, 0), (7, 0
 black_pieces = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook',
                 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn']
 black_locations = [(0, 7), (1, 7), (2, 7), (3, 7), (4, 7), (5, 7), (6, 7), (7, 7),
-                   (0, 6), (1, 6), (2, 6), (3, 6), (4, 6), (5, 6), (6, 6)]
+                   (0, 6), (1, 6), (2, 6), (3, 6), (4, 6), (5, 6), (6, 6), (7, 6)]
 
 # Track moved pieces for castling
 white_moved = [False] * len(white_pieces)
@@ -135,7 +135,7 @@ def check_queen(position, color, cur_white_locations=None, cur_black_locations=N
     moves_list.extend(check_bishop(position, color, cur_white_locations, cur_black_locations))
     return moves_list
 
-def check_king(position, color, index, cur_white_locations=None, cur_black_locations=None, checking_castling=False):
+def check_king(position, color, index, cur_white_locations=None, cur_black_locations=None):
     white_locs = cur_white_locations if cur_white_locations is not None else white_locations
     black_locs = cur_black_locations if cur_black_locations is not None else black_locations
     moves_list = []
@@ -157,81 +157,54 @@ def check_king(position, color, index, cur_white_locations=None, cur_black_locat
         target = (position[0]+t[0], position[1]+t[1])
         if 0<=target[0]<=7 and 0<=target[1]<=7 and target not in friends_list:
             moves_list.append(target)
-    # Only check castling if this is not a recursive check call and king hasn't moved
-    if not checking_castling and position == initial_king and not moved[index]:
-        def is_being_attacked(pos, attacking_color):
-            """Check if a position is under attack without considering king moves"""
-            enemy_pieces = black_pieces if attacking_color == 'black' else white_pieces
-            enemy_locs = black_locs if attacking_color == 'black' else white_locs
-            
-            for i, piece in enumerate(enemy_pieces):
-                if piece is None or piece == 'king':  # Skip captured pieces and king
-                    continue
-                pos_enemy = enemy_locs[i]
-                if piece == 'pawn':
-                    moves = check_pawn(pos_enemy, attacking_color, white_locs, black_locs)
-                elif piece == 'rook':
-                    moves = check_rook(pos_enemy, attacking_color, white_locs, black_locs)
-                elif piece == 'knight':
-                    moves = check_knight(pos_enemy, attacking_color, white_locs, black_locs)
-                elif piece == 'bishop':
-                    moves = check_bishop(pos_enemy, attacking_color, white_locs, black_locs)
-                elif piece == 'queen':
-                    moves = check_queen(pos_enemy, attacking_color, white_locs, black_locs)
-                if pos in moves:
-                    return True
-            return False
-        
-        # Only check castling if king is not under attack
-        if not is_being_attacked(position, 'black' if color == 'white' else 'white'):
-            # ...existing castling code but using is_being_attacked() instead of is_check()...
-            try:
-                rook_index = white_locs.index(kingside_rook_pos) if color=='white' else black_locs.index(kingside_rook_pos)
-                if not moved[rook_index]:
-                    if color=='white':
-                        if (5,0) not in white_locs+black_locs and (6,0) not in white_locs+black_locs:
-                            # Check the intermediate squares by simulating the king's move
-                            temp1 = copy.deepcopy(white_locs)
-                            temp1[white_pieces.index('king')] = (5,0)
-                            temp2 = copy.deepcopy(white_locs)
-                            temp2[white_pieces.index('king')] = (6,0)
-                            if (not is_being_attacked((5,0), 'black') and
-                                not is_being_attacked((6,0), 'black')):
-                                castle_moves.append((6,0,'castle_kingside'))
-                    else:
-                        if (5,7) not in white_locs+black_locs and (6,7) not in white_locs+black_locs:
-                            temp1 = copy.deepcopy(black_locs)
-                            temp1[black_pieces.index('king')] = (5,7)
-                            temp2 = copy.deepcopy(black_locs)
-                            temp2[black_pieces.index('king')] = (6,7)
-                            if (not is_being_attacked((5,7), 'white') and
-                                not is_being_attacked((6,7), 'white')):
-                                castle_moves.append((6,7,'castle_kingside'))
-            except ValueError:
-                pass
-            try:
-                rook_index = white_locs.index(queenside_rook_pos) if color=='white' else black_locs.index(queenside_rook_pos)
-                if not moved[rook_index]:
-                    if color=='white':
-                        if (1,0) not in white_locs+black_locs and (2,0) not in white_locs+black_locs and (3,0) not in white_locs+black_locs:
-                            temp1 = copy.deepcopy(white_locs)
-                            temp1[white_pieces.index('king')] = (2,0)
-                            temp2 = copy.deepcopy(white_locs)
-                            temp2[white_pieces.index('king')] = (3,0)
-                            if (not is_being_attacked((2,0), 'black') and
-                                not is_being_attacked((3,0), 'black')):
-                                castle_moves.append((2,0,'castle_queenside'))
-                    else:
-                        if (1,7) not in white_locs+black_locs and (2,7) not in white_locs+black_locs and (3,7) not in white_locs+black_locs:
-                            temp1 = copy.deepcopy(black_locs)
-                            temp1[black_pieces.index('king')] = (2,7)
-                            temp2 = copy.deepcopy(black_locs)
-                            temp2[black_pieces.index('king')] = (3,7)
-                            if (not is_being_attacked((2,7), 'white') and
-                                not is_being_attacked((3,7), 'white')):
-                                castle_moves.append((2,7,'castle_queenside'))
-            except ValueError:
-                pass
+    if position == initial_king and not moved[index]:
+        try:
+            rook_index = white_locs.index(kingside_rook_pos) if color=='white' else black_locs.index(kingside_rook_pos)
+            if not moved[rook_index]:
+                if color=='white':
+                    if (5,0) not in white_locs+black_locs and (6,0) not in white_locs+black_locs:
+                        # Check the intermediate squares by simulating the king's move
+                        temp1 = copy.deepcopy(white_locs)
+                        temp1[white_pieces.index('king')] = (5,0)
+                        temp2 = copy.deepcopy(white_locs)
+                        temp2[white_pieces.index('king')] = (6,0)
+                        if (not is_check(color, cur_white_locations=temp1, cur_black_locations=black_locs) and
+                            not is_check(color, cur_white_locations=temp2, cur_black_locations=black_locs)):
+                            castle_moves.append((6,0,'castle_kingside'))
+                else:
+                    if (5,7) not in white_locs+black_locs and (6,7) not in white_locs+black_locs:
+                        temp1 = copy.deepcopy(black_locs)
+                        temp1[black_pieces.index('king')] = (5,7)
+                        temp2 = copy.deepcopy(black_locs)
+                        temp2[black_pieces.index('king')] = (6,7)
+                        if (not is_check(color, cur_black_locations=temp1, cur_white_locations=white_locs) and
+                            not is_check(color, cur_black_locations=temp2, cur_white_locations=white_locs)):
+                            castle_moves.append((6,7,'castle_kingside'))
+        except ValueError:
+            pass
+        try:
+            rook_index = white_locs.index(queenside_rook_pos) if color=='white' else black_locs.index(queenside_rook_pos)
+            if not moved[rook_index]:
+                if color=='white':
+                    if (1,0) not in white_locs+black_locs and (2,0) not in white_locs+black_locs and (3,0) not in white_locs+black_locs:
+                        temp1 = copy.deepcopy(white_locs)
+                        temp1[white_pieces.index('king')] = (2,0)
+                        temp2 = copy.deepcopy(white_locs)
+                        temp2[white_pieces.index('king')] = (3,0)
+                        if (not is_check(color, cur_white_locations=temp1, cur_black_locations=black_locs) and
+                            not is_check(color, cur_white_locations=temp2, cur_black_locations=black_locs)):
+                            castle_moves.append((2,0,'castle_queenside'))
+                else:
+                    if (1,7) not in white_locs+black_locs and (2,7) not in white_locs+black_locs and (3,7) not in white_locs+black_locs:
+                        temp1 = copy.deepcopy(black_locs)
+                        temp1[black_pieces.index('king')] = (2,7)
+                        temp2 = copy.deepcopy(black_locs)
+                        temp2[black_pieces.index('king')] = (3,7)
+                        if (not is_check(color, cur_black_locations=temp1, cur_white_locations=white_locs) and
+                            not is_check(color, cur_black_locations=temp2, cur_white_locations=white_locs)):
+                            castle_moves.append((2,7,'castle_queenside'))
+        except ValueError:
+            pass
     moves_list.extend(castle_moves)
     return moves_list
 
@@ -321,7 +294,7 @@ def is_check(color, cur_white_locations=None, cur_black_locations=None, cur_whit
             elif piece=='queen':
                 moves = check_queen(pos, 'black' if color=='white' else 'white', cur_white_locations, cur_black_locations)
             elif piece=='king':
-                moves = check_king(pos, 'black' if color=='white' else 'white', i, cur_white_locations, cur_black_locations, checking_castling=True)
+                moves = check_king(pos, 'black' if color=='white' else 'white', i, cur_white_locations, cur_black_locations)
             if king_pos in moves:
                 return True
     except ValueError:
