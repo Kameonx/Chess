@@ -290,6 +290,13 @@
         }
 
         /* Remove turn choice button styles */
+        .outside-label.bottom-label {
+            transform: translateX(-50%);
+        }
+
+        .outside-label.left-label {
+            transform: translateY(-50%);
+        }
     </style>
 </head>
 <body>
@@ -377,23 +384,25 @@
         const wrapper = document.getElementById('chessboard-wrapper');
         const squareSize = document.querySelector('.square').offsetWidth;
         
-        // Create top column labels (a-h)
+        // Bottom column labels (a-h) remain in order
         for (let i = 0; i < 8; i++) {
             const label = document.createElement('div');
-            label.classList.add('outside-label', 'column-label', 'top-label');
+            label.classList.add('outside-label', 'column-label', 'bottom-label');
             label.textContent = files[i];
             label.style.left = `${25 + i * squareSize + squareSize/2 - 10}px`;
-            label.style.top = '5px';
+            label.style.bottom = '5px';
             wrapper.appendChild(label);
         }
         
-        // Create right row labels (1-8)
+        // Left row labels: show ranks 1 (bottom) to 8 (top)
         for (let i = 0; i < 8; i++) {
             const label = document.createElement('div');
-            label.classList.add('outside-label', 'row-label', 'right-label');
-            label.textContent = 8 - i;  // This shows row 8 at the top and row 1 at the bottom
-            label.style.right = '5px';
-            label.style.top = `${25 + i * squareSize + squareSize/2 - 10}px`;
+            label.classList.add('outside-label', 'row-label', 'left-label');
+            // Instead of 8 - i, we want i+1 but placed in reverse order vertically.
+            label.textContent = i + 1;
+            // Compute vertical position in reverse: i=0 should be at bottom.
+            label.style.left = '5px';
+            label.style.top = `${25 + (7 - i) * squareSize + squareSize/2 - 10}px`;
             wrapper.appendChild(label);
         }
     }
@@ -552,7 +561,8 @@
             }
             if (gridLabelMode === 0 || gridLabelMode === 2) {
                 const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-                const rowLabel = 8 - Math.floor(index / 8);  // This shows row 8 at the top
+                // Use the board's internal coordinates (row 0 = rank 1)
+                const rowLabel = Math.floor(index / 8) + 1;
                 const colLabel = files[index % 8];
                 const topLeftLabel = document.createElement('div');
                 topLeftLabel.classList.add('grid-label', 'top-left');
@@ -562,27 +572,20 @@
         });
         if (gameState.valid_moves) {
             gameState.valid_moves.forEach(move => {
-                const [col, row] = Array.isArray(move) ? move.slice(0, 2) : move;
-                const index = row * 8 + col;
-                const square = document.querySelector(`.square[data-index="${index}"]`);
-                if (square) {
-                    const isValidMove = gameState.valid_moves.some(vm => {
-                        if (Array.isArray(vm)) {
-                            return vm[0] === col && vm[1] === row;
-                        }
-                        return false;
-                    });
-                    const isCastleMove = gameState.valid_moves.some(vm => {
-                        if (Array.isArray(vm) && vm.length === 3 && vm[2].includes('castle')) {
-                            return vm[0] === col && vm[1] === row;
-                        }
-                        return false;
-                    });
-                    if (isValidMove) {
+                // Check if the move is an array and has at least 2 elements
+                if (Array.isArray(move) && move.length >= 2) {
+                    const [col, row] = move;
+                    const index = row * 8 + col;
+                    const square = document.querySelector(`.square[data-index="${index}"]`);
+                    
+                    if (square) {
                         square.classList.add('valid-move');
-                    }
-                    if (isCastleMove) {
-                        square.classList.add('castle-move');
+                        
+                        // Check if this move includes castle info (move.length > 2)
+                        if (move.length > 2 && typeof move[2] === 'string' && move[2].includes('castle')) {
+                            square.classList.add('castle-move');
+                            console.log("Castle move detected at:", col, row);
+                        }
                     }
                 }
             });
@@ -757,11 +760,12 @@
                 gameState.black_options[pieceIndex];
                 
             // First determine castle moves to apply the castle-move class first
-            const castleMoves = gameState.valid_moves.filter(vm => 
-                Array.isArray(vm) && vm.length === 3 && vm[2].includes('castle')
+            const castleMoves = gameState.valid_moves.filter(move => 
+                Array.isArray(move) && move.length > 2 && move[2] && move[2].includes('castle')
             );
+            console.log("Castle moves:", castleMoves);
             
-            // Then process all valid moves
+            // Process all valid moves for drop targets
             validDropTargets = gameState.valid_moves.map(move => {
                 const [col, row] = Array.isArray(move) ? move.slice(0, 2) : move;
                 return row * 8 + col;
@@ -772,15 +776,17 @@
                 if (square) {
                     square.classList.add('valid-drop-target');
                     
-                    // Check if this is a castling move
+                    // Properly check if this square is part of a castling move
                     const row = Math.floor(index / 8);
                     const col = index % 8;
+                    
                     const isCastleMove = castleMoves.some(move => 
                         move[0] === col && move[1] === row
                     );
                     
                     if (isCastleMove) {
                         square.classList.add('castle-move');
+                        console.log("Added castle-move class to:", col, row);
                     }
                 }
             });
@@ -909,6 +915,20 @@
             e.preventDefault();
             makeMove(draggedPieceIndex, [index % 8, Math.floor(index / 8)]);
         }
+    }
+
+    function handleTouchMove(e) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const clone = document.querySelector('.piece-dragging');
+        if (clone) {
+            clone.style.left = `${touch.clientX - draggedPieceOffsetX}px`;
+            clone.style.top = `${touch.clientY - draggedPieceOffsetY}px`;
+        }
+    }
+    
+    function handleTouchEnd(e) {
+        cleanupTouch();
     }
 
     function makeMove(pieceIndex, move) {
