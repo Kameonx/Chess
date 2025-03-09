@@ -591,7 +591,8 @@ def make_move():
         'promotion': promotion_data,
         'last_move': state['last_move'],
         'vs_ai': vs_ai,
-        'ai_color': state.get('ai_color', 'black')
+        'ai_color': state.get('ai_color', 'black'),
+        'difficulty': state.get('difficulty', 'easy')  # Added to preserve current difficulty
     }
     
     return jsonify(response_data)
@@ -745,6 +746,10 @@ def restart_game():
     data = request.json or {}
     vs_ai = data.get('vsAI', False)
     ai_color = data.get('aiColor', 'black')  # Default AI plays black
+    difficulty = data.get('difficulty', 'easy')  # Get AI difficulty
+    
+    # Update the chess_ai instance's difficulty
+    chess_ai.difficulty = difficulty
     
     # Determine starting turn based on previous winner or AI settings
     starting_turn = 0  # Default to white first
@@ -760,6 +765,7 @@ def restart_game():
     # Set AI game flag if playing against AI
     state['vs_ai'] = vs_ai
     state['ai_color'] = ai_color
+    state['difficulty'] = difficulty  # Store difficulty in game state
     
     # Keep track of who won the previous game
     if 'previous_winner' in session.get('game_state', {}):
@@ -779,7 +785,7 @@ def restart_game():
     state['check'] = current_check
     session['game_state'] = state
     
-    # Return complete state data
+    # Return complete state data including difficulty
     return jsonify({
         'white_pieces': state['white_pieces'],
         'white_locations': state['white_locations'],
@@ -800,6 +806,7 @@ def restart_game():
         'checkmate': False,
         'vs_ai': vs_ai,
         'ai_color': ai_color,
+        'difficulty': difficulty,  # Add difficulty to response
         'last_move': None
     })
 
@@ -922,6 +929,7 @@ def ai_move():
         'promotion': promotion_data,
         'vs_ai': state['vs_ai'],
         'ai_color': state['ai_color'],
+        'difficulty': state.get('difficulty', 'easy'),  # Include difficulty in response
         'last_move': state['last_move']
     })
 
