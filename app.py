@@ -11,7 +11,8 @@ WIDTH = 1000
 HEIGHT = 900
 
 # Initialize game state per session
-def init_game_state():
+def init_game_state(starting_turn=0):
+    # Initialize with the specified starting turn (0 for white, 1 for black)
     session['game_state'] = {
         'white_pieces': ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook',
                          'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn'],
@@ -25,14 +26,16 @@ def init_game_state():
         'black_moved': [False] * 16,
         'captured_pieces_white': [],
         'captured_pieces_black': [],
-        'turn_step': 0,
+        'turn_step': starting_turn, # Set initial turn based on preference
         'selection': 100,
         'valid_moves': [],
         'game_over': False,
         'winner': '',
         'check': '',
         'white_options': [],
-        'black_options': []
+        'black_options': [],
+        'last_move': None,
+        'previous_winner': None  # Track the previous game winner
     }
 
 @app.before_request
@@ -440,6 +443,7 @@ def make_move():
     data = request.json
     piece_index = data['piece_index']
     move = tuple(data['move'])
+    from_pos = data.get('from', None)  # Get the from position if provided
     
     if state['turn_step'] % 2 == 0:
         pieces = state['white_pieces']
@@ -454,6 +458,16 @@ def make_move():
         enemies_list = state['white_locations']
         enemies_pieces = state['white_pieces']
 
+    # Store the last move - ensure these are actual tuples, not lists
+    if from_pos is None:
+        from_pos = locations[piece_index]
+    
+    # Make sure both from and to are properly stored as tuples
+    state['last_move'] = {
+        'from': tuple(from_pos) if isinstance(from_pos, list) else from_pos,
+        'to': tuple(move) if isinstance(move, list) else move
+    }
+    
     captured_index = None
     checkmate_state = False
     if move in enemies_list:
@@ -493,6 +507,10 @@ def make_move():
             state['captured_pieces_black'].append(enemies_pieces[captured_index])
         enemies_pieces[captured_index] = None
         enemies_list[captured_index] = (-1, -1)
+        
+    # If game is over, store the winner for the next game's starting turn
+    if state['game_over']:
+        state['previous_winner'] = state['winner']
     
     promotion_data = None
     if pieces[piece_index] == 'pawn':
@@ -549,7 +567,8 @@ def make_move():
         'white_moved': state['white_moved'],
         'black_moved': state['black_moved'],
         'checkmate': checkmate_state,
-        'promotion': promotion_data
+        'promotion': promotion_data,
+        'last_move': state['last_move']  # Include the last move in the response
     })
 
 @app.route('/images/<path:filename>')
@@ -614,7 +633,8 @@ def get_state():
         'notification': notification,
         'white_moved': state['white_moved'],
         'black_moved': state['black_moved'],
-        'checkmate': checkmate_state  # Add this field
+        'checkmate': checkmate_state,
+        'last_move': state.get('last_move')  # Include the last move in the response
     })
 
 @app.route('/promote', methods=['POST'])
@@ -656,12 +676,96 @@ def promote():
 def reset_board():
     init_game_state()
     state = session['game_state']
-    # ...if needed, recalc options...
-    return jsonify(state)
+    
+    # Calculate options for both sides after reset
+    state['black_options'] = check_options(state['black_pieces'], state['black_locations'], 'black')
+    state['white_options'] = check_options(state['white_pieces'], state['white_locations'], 'white')
+    
+    # Set check status
+    current_check = ''
+    if is_check('white'):
+        current_check = 'white'
+    elif is_check('black'):
+        current_check = 'black'
+    
+    state['check'] = current_check
+    session['game_state'] = state
+    
+    # Return complete state data
+    return jsonify({
+        'white_pieces': state['white_pieces'],
+        'white_locations': state['white_locations'],
+        'black_pieces': state['black_pieces'],
+        'black_locations': state['black_locations'],
+        'captured_pieces_white': state['captured_pieces_white'],
+        'captured_pieces_black': state['captured_pieces_black'],
+        'turn_step': state['turn_step'],
+        'selection': state['selection'],
+        'valid_moves': [],
+        'white_options': state['white_options'],
+        'black_options': state['black_options'],
+        'winner': state['winner'],
+        'game_over': state['game_over'],
+        'check': current_check,
+        'white_moved': state['white_moved'],
+        'black_moved': state['black_moved'],
+        'checkmate': False,
+        'last_move': None  # Reset the last move on game restart
+    })
 
 @app.route('/restart', methods=['POST'])
 def restart_game():
-    return reset_board()
+    state = session.get('game_state', {})
+    # Determine starting turn based on previous winner
+    starting_turn = 0  # Default to white first
+    
+    # If there was a previous game with a winner, use that color to start
+    if state.get('previous_winner') == 'black':
+        starting_turn = 1
+    
+    # Initialize new game state with the determined starting turn
+    init_game_state(starting_turn)
+    state = session['game_state']
+    
+    # Keep track of who won the previous game
+    if 'previous_winner' in session.get('game_state', {}):
+        state['previous_winner'] = session['game_state']['previous_winner']
+    
+    # Calculate options for both sides after reset
+    state['black_options'] = check_options(state['black_pieces'], state['black_locations'], 'black')
+    state['white_options'] = check_options(state['white_pieces'], state['white_locations'], 'white')
+    
+    # Set check status
+    current_check = ''
+    if is_check('white'):
+        current_check = 'white'
+    elif is_check('black'):
+        current_check = 'black'
+    
+    state['check'] = current_check
+    session['game_state'] = state
+    
+    # Return complete state data
+    return jsonify({
+        'white_pieces': state['white_pieces'],
+        'white_locations': state['white_locations'],
+        'black_pieces': state['black_pieces'],
+        'black_locations': state['black_locations'],
+        'captured_pieces_white': state['captured_pieces_white'],
+        'captured_pieces_black': state['captured_pieces_black'],
+        'turn_step': state['turn_step'],
+        'selection': state['selection'],
+        'valid_moves': [],
+        'white_options': state['white_options'],
+        'black_options': state['black_options'],
+        'winner': state['winner'],
+        'game_over': state['game_over'],
+        'check': current_check,
+        'white_moved': state['white_moved'],
+        'black_moved': state['black_moved'],
+        'checkmate': False,
+        'last_move': None
+    })
 
 if __name__ == '__main__':
     app.run(debug=True)
