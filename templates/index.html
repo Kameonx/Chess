@@ -359,13 +359,6 @@
     let playingVsAI = false;
     let gameState = null;
     let draggedPieceRect = null;  // NEW global variable to store the piece's bounding rectangle
-    let touchStartX = null;
-    let touchStartY = null;
-    let dragStarted = false;
-    let dragClone = null;
-    let touchedPieceIndex = null;
-    let touchedPiece = null;
-    let touchedPieceColor = null;
 
     function createBoard() {
         let wrapper = document.getElementById('chessboard-wrapper');
@@ -1123,75 +1116,201 @@
               (gameState.turn_step % 2 === 1 && color === 'black'))) {
             return;
         }
+
+        // Prevent default to avoid any browser handling that might interfere
         e.preventDefault();
         e.stopPropagation();
-        console.log("Touch start on piece:", pieceIndex, color);
-        cleanupTouch();  // Clear any existing drag state
-
-        // Record initial touch info for tap vs drag decision
-        const touch = e.touches[0];
-        touchStartX = touch.clientX;
-        touchStartY = touch.clientY;
-        dragStarted = false;
-        touchedPieceIndex = pieceIndex;
-        touchedPiece = e.target;
-        touchedPieceColor = color;
         
-        // Set valid moves based on piece selection (but do not show clone yet)
+        // Store the initial touch position to determine if this was a tap or drag
+        const touch = e.touches[0];
+        const startX = touch.clientX;
+        const startY = touch.clientY;
+        
+        // Clear any existing drag state
+        cleanupTouch();
+        
+        // Set up game state
         gameState.selection = pieceIndex;
-        gameState.valid_moves = gameState.turn_step % 2 === 0 ?
-                 gameState.white_options[pieceIndex] :
-                 gameState.black_options[pieceIndex];
+        gameState.valid_moves = gameState.turn_step % 2 === 0 ? 
+            gameState.white_options[pieceIndex] : 
+            gameState.black_options[pieceIndex];
+        
+        // Track the time to differentiate between tap and drag
+        const startTime = Date.now();
+        
+        // Set touch information
+        const target = e.target;
+        draggedPiece = target;
+        draggedPieceIndex = pieceIndex;
+        
+        // Track if we've moved enough to consider this a drag
+        let isDragging = false;
+        let dragClone = null;
+        
+        // Handle the move event
+        function handleMove(moveEvent) {
+            moveEvent.preventDefault();
+            moveEvent.stopPropagation();
+            
+            const moveTouch = moveEvent.touches[0];
+            const moveX = moveTouch.clientX;
+            const moveY = moveTouch.clientY;
+            
+            // Calculate distance moved
+            const distX = moveX - startX;
+            const distY = moveY - startY;
+            const distance = Math.sqrt(distX * distX + distY * distY);
+            
+            // If moved more than threshold, initiate drag
+            if (distance > 10 && !isDragging) {
+                isDragging = true;
+                
+                // Create draggable element for drag operation
+                dragClone = document.createElement('img');
+                dragClone.src = target.src;
+                dragClone.classList.add('piece-dragging');
+                document.body.appendChild(dragClone);
+                
+                // Set up valid drop targets
+                validDropTargets = gameState.valid_moves.map(move => {
+                    const [col, row] = Array.isArray(move) ? move.slice(0, 2) : move;
+                    return row * 8 + col;
+                });
+                
+                // Highlight valid targets
+                validDropTargets.forEach(index => {
+                    const square = document.querySelector(`.square[data-index="${index}"]`);
+                    if (square) {
+                        square.classList.add('valid-drop-target');
+                        
+                        // Check for castle move
+                        const row = Math.floor(index / 8);
+                        const col = index % 8;
+                        const isCastleMove = gameState.valid_moves.some(move => {
+                            return Array.isArray(move) && move.length > 2 && 
+                                   move[0] === col && move[1] === row && 
+                                   typeof move[2] === 'string' && move[2].includes('castle');
+                        });
+                        
+                        if (isCastleMove) {
+                            square.classList.add('castle-move');
+                        }
+                    }
+                });
+                
+                // Add dragging class to body
+                document.body.classList.add('dragging');
+            }
+            
+            // If dragging, update the clone's position
+            if (isDragging && dragClone) {
+                requestAnimationFrame(() => {
+                    positionCloneAtTouch(dragClone, moveX, moveY);
+                });
+                
+                // Find square under finger
+                const elementsAtTouch = document.elementsFromPoint(moveX, moveY);
+                const squareUnderTouch = elementsAtTouch.find(el => el.classList.contains('square'));
+                
+                // Clear previous highlights
+                document.querySelectorAll('.square.drag-over').forEach(sq => {
+                    if (sq !== squareUnderTouch) {
+                        sq.classList.remove('drag-over');
+                    }
+                });
+                
+                // Highlight current valid target
+                if (squareUnderTouch) {
+                    const squareIndex = parseInt(squareUnderTouch.dataset.index);
+                    if (validDropTargets.includes(squareIndex)) {
+                        squareUnderTouch.classList.add('drag-over');
+                    }
+                }
+            }
+        }
+        
+        // Handle the touch end event
+        function handleEnd(endEvent) {
+            endEvent.preventDefault();
+            
+            // Remove all event listeners
+            document.removeEventListener('touchmove', handleMove);
+            document.removeEventListener('touchend', handleEnd);
+            
+            // Handle a tap (quick touch without much movement)
+            if (!isDragging) {
+                // If it was a short tap (less than 300ms), treat as click/tap
+                if (Date.now() - startTime < 300) {
+                    // Update the board and highlight valid moves
+                    updateBoard();
+                    highlightValidMoves();
+                }
+                return;
+            }
+            
+            // Handle end of drag if we were dragging
+            if (isDragging) {
+                const touch = endEvent.changedTouches[0];
+                
+                // Find the square under the finger
+                const elementsAtTouch = document.elementsFromPoint(touch.clientX, touch.clientY);
+                const squareUnderTouch = elementsAtTouch.find(el => el.classList.contains('square'));
+                
+                // Make move if it's a valid target
+                if (squareUnderTouch) {
+                    const squareIndex = parseInt(squareUnderTouch.dataset.index);
+                    if (validDropTargets.includes(squareIndex)) {
+                        const col = squareIndex % 8;
+                        const row = Math.floor(squareIndex / 8);
+                        makeMove(draggedPieceIndex, [col, row]);
+                    }
+                }
+            }
+            
+            // Clean up
+            cleanupTouch();
+        }
+        
+        // Set up the event listeners for move and end
+        document.addEventListener('touchmove', handleMove, { passive: false });
+        document.addEventListener('touchend', handleEnd, { passive: false });
+        document.addEventListener('touchcancel', cleanupTouch);
+    }
+
+    // Improved positioning function that works reliably on mobile
+    function positionCloneAtTouch(element, x, y) {
+        const size = (window.innerWidth <= 768) ? 20 : 35; // Half width for mobile/desktop
+        element.style.left = `${x - size}px`;
+        element.style.top = `${y - size}px`;
     }
 
     function handleTouchMove(e) {
         e.preventDefault();
         e.stopPropagation();
-        if (touchStartX === null || touchStartY === null) return;
+        
+        if (!draggedPiece) return;
+        
         const touch = e.touches[0];
-        const dx = touch.clientX - touchStartX;
-        const dy = touch.clientY - touchStartY;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        const threshold = 10; // pixels
-        if (!dragStarted && distance > threshold) {
-            dragStarted = true;
-            // Create a clone now for dragging
-            dragClone = document.createElement('img');
-            dragClone.src = touchedPiece.src;
-            dragClone.classList.add('piece-dragging');
-            document.body.appendChild(dragClone);
-            // Also highlight valid drop targets as before:
-            validDropTargets = gameState.valid_moves.map(move => {
-                const [col, row] = Array.isArray(move) ? move.slice(0, 2) : move;
-                return row * 8 + col;
-            });
-            validDropTargets.forEach(index => {
-                const square = document.querySelector(`.square[data-index="${index}"]`);
-                if (square) {
-                    square.classList.add('valid-drop-target');
-                    const rowIndex = Math.floor(index / 8);
-                    const colIndex = index % 8;
-                    const isCastle = gameState.valid_moves.some(move =>
-                        Array.isArray(move) && move.length > 2 && move[0] === colIndex && move[1] === rowIndex
-                    );
-                    if (isCastle) {
-                        square.classList.add('castle-move');
-                    }
-                }
-            });
-        }
-        if (dragStarted && dragClone) {
+        const clone = document.querySelector('.piece-dragging');
+        
+        if (clone) {
+            // Use requestAnimationFrame for smoother updates
             requestAnimationFrame(() => {
-                positionCloneAtTouch(dragClone, touch.clientX, touch.clientY);
+                positionCloneAtTouch(clone, touch.clientX, touch.clientY);
             });
-            // Highlight the square under the finger
+            
+            // Find square under finger
             const elementsAtTouch = document.elementsFromPoint(touch.clientX, touch.clientY);
             const squareUnderTouch = elementsAtTouch.find(el => el.classList.contains('square'));
+            
+            // Clear previous highlights
             document.querySelectorAll('.square.drag-over').forEach(sq => {
                 if (sq !== squareUnderTouch) {
                     sq.classList.remove('drag-over');
                 }
             });
+            
+            // Highlight current valid target
             if (squareUnderTouch) {
                 const squareIndex = parseInt(squareUnderTouch.dataset.index);
                 if (validDropTargets.includes(squareIndex)) {
@@ -1204,32 +1323,32 @@
     function handleTouchEnd(e) {
         e.preventDefault();
         e.stopPropagation();
+        
+        if (!draggedPiece) return;
+        
+        // Find the square under the finger
         const touch = e.changedTouches[0];
-        if (!dragStarted) {
-            // Treat as a tap: show valid moves without dragging the piece.
-            // (This replicates the PC behavior when a piece is clicked.)
-            console.log("Touch tap detected on piece", touchedPieceIndex);
-            // gameState was already set in handleTouchStart.
-            updateBoard();
-            highlightValidMoves();
-        } else {
-            // Drag ended, try to drop the piece.
-            const elementsAtTouch = document.elementsFromPoint(touch.clientX, touch.clientY);
-            const squareUnderTouch = elementsAtTouch.find(el => el.classList.contains('square'));
-            if (squareUnderTouch) {
-                const squareIndex = parseInt(squareUnderTouch.dataset.index);
-                if (validDropTargets.includes(squareIndex)) {
-                    const col = squareIndex % 8;
-                    const row = Math.floor(squareIndex / 8);
-                    makeMove(touchedPieceIndex, [col, row]);
-                }
+        const elementsAtTouch = document.elementsFromPoint(touch.clientX, touch.clientY);
+        const squareUnderTouch = elementsAtTouch.find(el => el.classList.contains('square'));
+        
+        // Make move if it's a valid target
+        if (squareUnderTouch) {
+            const squareIndex = parseInt(squareUnderTouch.dataset.index);
+            if (validDropTargets.includes(squareIndex)) {
+                const col = squareIndex % 8;
+                const row = Math.floor(squareIndex / 8);
+                makeMove(draggedPieceIndex, [col, row]);
             }
         }
+        
         cleanupTouch();
     }
 
     function cleanupTouch() {
+        // Remove dragged clone
         document.querySelectorAll('.piece-dragging').forEach(clone => clone.remove());
+        
+        // Clear highlighting
         document.querySelectorAll('.square.valid-drop-target').forEach(square => {
             square.classList.remove('valid-drop-target');
         });
@@ -1239,20 +1358,20 @@
         document.querySelectorAll('.square.drag-over').forEach(square => {
             square.classList.remove('drag-over');
         });
+        
+        // Remove event listeners
         document.removeEventListener('touchmove', handleTouchMove);
         document.removeEventListener('touchend', handleTouchEnd);
         document.removeEventListener('touchcancel', cleanupTouch);
+        
+        // Reset state
         document.body.classList.remove('dragging');
         draggedPiece = null;
-        touchedPiece = null;
-        touchedPieceIndex = null;
-        dragStarted = false;
-        dragClone = null;
-        touchStartX = null;
-        touchStartY = null;
+        draggedPieceIndex = -1;
         validDropTargets = [];
     }
 
+    // Replace the updateBoard function's touch event binding section:
     let originalUpdateBoard = updateBoard;
     updateBoard = function() {
         originalUpdateBoard();
@@ -1292,6 +1411,27 @@
         e.preventDefault();
         return false;
     });
+
+    // Add additional CSS to make mobile pieces easier to interact with
+    const styleSheet = document.createElement('style');
+    styleSheet.innerHTML = `
+    @media (max-width: 768px) {
+        .square {
+            touch-action: none !important;
+        }
+        .piece-image {
+            touch-action: none !important;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        .piece-dragging {
+            will-change: left, top;
+            pointer-events: none !important;
+            position: fixed !important;
+            z-index: 2000;
+        }
+    }`;
+    document.head.appendChild(styleSheet);
     </script>
 </body>
 </html>
