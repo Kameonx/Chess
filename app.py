@@ -1,14 +1,18 @@
 from flask import Flask, render_template, request, jsonify, send_from_directory, session
 import os
 import random
-import copy  # Added for deep copying simulation states
+import copy
+from ai_agent import ChessAI  # Import our new AI agent
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key_here'  # Added for session management
+app.secret_key = 'your_secret_key_here'
 
 # Constants
 WIDTH = 1000
 HEIGHT = 900
+
+# Create AI instance
+chess_ai = ChessAI(difficulty='medium')
 
 # Initialize game state per session
 def init_game_state(starting_turn=0):
@@ -455,6 +459,7 @@ def make_move():
     piece_index = data['piece_index']
     move = tuple(data['move'])
     from_pos = data.get('from', None)  # Get the from position if provided
+    vs_ai = data.get('vs_ai', state.get('vs_ai', False))  # Check if playing against AI
     
     if state['turn_step'] % 2 == 0:
         pieces = state['white_pieces']
@@ -560,8 +565,11 @@ def make_move():
     state['valid_moves'] = []
     notification = getNotification(check_val, state['game_over'], state['turn_step'], checkmate_state)
     
+    # Include vs_ai flag in response
+    state['vs_ai'] = vs_ai
     session['game_state'] = state
-    return jsonify({
+    
+    response_data = {
         'white_pieces': state['white_pieces'],
         'white_locations': state['white_locations'],
         'black_pieces': state['black_pieces'],
@@ -581,8 +589,12 @@ def make_move():
         'black_moved': state['black_moved'],
         'checkmate': checkmate_state,
         'promotion': promotion_data,
-        'last_move': state['last_move']  # Include the last move in the response
-    })
+        'last_move': state['last_move'],
+        'vs_ai': vs_ai,
+        'ai_color': state.get('ai_color', 'black')
+    }
+    
+    return jsonify(response_data)
 
 @app.route('/images/<path:filename>')
 def serve_image(filename):
@@ -647,7 +659,7 @@ def get_state():
         'white_moved': state['white_moved'],
         'black_moved': state['black_moved'],
         'checkmate': checkmate_state,
-        'last_move': state.get('last_move')  # Include the last move in the response
+        'last_move': state.get('last_move')
     })
 
 @app.route('/promote', methods=['POST'])
@@ -723,22 +735,31 @@ def reset_board():
         'white_moved': state['white_moved'],
         'black_moved': state['black_moved'],
         'checkmate': False,
-        'last_move': None  # Reset the last move on game restart
+        'last_move': None
     })
 
 @app.route('/restart', methods=['POST'])
 def restart_game():
     state = session.get('game_state', {})
-    # Determine starting turn based on previous winner
+    # Get request data if provided
+    data = request.json or {}
+    vs_ai = data.get('vsAI', False)
+    ai_color = data.get('aiColor', 'black')  # Default AI plays black
+    
+    # Determine starting turn based on previous winner or AI settings
     starting_turn = 0  # Default to white first
     
     # If there was a previous game with a winner, use that color to start
-    if state.get('previous_winner') == 'black':
+    if state.get('previous_winner') == 'black' and not vs_ai:
         starting_turn = 1
     
     # Initialize new game state with the determined starting turn
     init_game_state(starting_turn)
     state = session['game_state']
+    
+    # Set AI game flag if playing against AI
+    state['vs_ai'] = vs_ai
+    state['ai_color'] = ai_color
     
     # Keep track of who won the previous game
     if 'previous_winner' in session.get('game_state', {}):
@@ -777,7 +798,131 @@ def restart_game():
         'white_moved': state['white_moved'],
         'black_moved': state['black_moved'],
         'checkmate': False,
+        'vs_ai': vs_ai,
+        'ai_color': ai_color,
         'last_move': None
+    })
+
+@app.route('/ai_move', methods=['POST'])
+def ai_move():
+    """Get and execute a move from the AI player"""
+    state = session['game_state']
+    
+    if state['game_over']:
+        return jsonify({'game_over': True})
+    
+    # Ensure it's the AI's turn (black's turn)
+    if state['turn_step'] % 2 != 1:
+        return jsonify({'error': 'Not AI\'s turn'}), 400
+    
+    # Get AI move
+    ai_move = chess_ai.get_move(state)
+    if not ai_move:
+        return jsonify({'error': 'AI could not find a valid move'}), 500
+    
+    piece_index, move, from_pos = ai_move
+    
+    # Process the move (similar to the make_move function)
+    pieces = state['black_pieces']
+    locations = state['black_locations']
+    moved = state['black_moved']
+    enemies_list = state['white_locations']
+    enemies_pieces = state['white_pieces']
+
+    # Store the last move
+    state['last_move'] = {
+        'from': from_pos,
+        'to': move
+    }
+    
+    # Check for captures
+    captured_index = None
+    checkmate_state = False
+    if move in enemies_list:
+        captured_index = enemies_list.index(move)
+        if enemies_pieces[captured_index] == 'king':
+            state['game_over'] = True
+            state['winner'] = 'black'
+    
+    # Update piece location
+    locations[piece_index] = move
+    moved[piece_index] = True
+    
+    # Handle castling for AI
+    if pieces[piece_index] == 'king':
+        if move == (5, 7):  # Kingside castling
+            rook_index = state['black_locations'].index((7, 7))
+            state['black_locations'][rook_index] = (4, 7)
+            state['black_moved'][rook_index] = True
+        elif move == (1, 7):  # Queenside castling
+            rook_index = state['black_locations'].index((0, 7))
+            state['black_locations'][rook_index] = (2, 7)
+            state['black_moved'][rook_index] = True
+
+    # Handle captures
+    if captured_index is not None:
+        state['captured_pieces_black'].append(enemies_pieces[captured_index])
+        enemies_pieces[captured_index] = None
+        enemies_list[captured_index] = (-1, -1)
+        
+    # Check for pawn promotion
+    promotion_data = None
+    if pieces[piece_index] == 'pawn' and move[1] == 0:
+        # AI always promotes to queen
+        state['black_pieces'][piece_index] = 'queen'
+    
+    # Recalculate options after move
+    state['black_options'] = check_options(state['black_pieces'], state['black_locations'], 'black')
+    state['white_options'] = check_options(state['white_pieces'], state['white_locations'], 'white')
+    
+    # Check for check/checkmate conditions
+    current_side = 'white'
+    opponent_side = 'black'
+    check_val = ''
+    if not state['game_over']:
+        if is_check(current_side) and check_mate(current_side):
+            check_val = current_side
+            checkmate_state = True
+        elif is_check(opponent_side) and check_mate(opponent_side):
+            check_val = opponent_side
+            checkmate_state = True
+        elif is_check(current_side):
+            check_val = current_side
+        elif is_check(opponent_side):
+            check_val = opponent_side
+    
+    # Increment turn and reset selection
+    state['turn_step'] += 1
+    state['selection'] = 100
+    state['valid_moves'] = []
+    
+    notification = getNotification(check_val, state['game_over'], state['turn_step'], checkmate_state)
+    
+    session['game_state'] = state
+    
+    return jsonify({
+        'white_pieces': state['white_pieces'],
+        'white_locations': state['white_locations'],
+        'black_pieces': state['black_pieces'],
+        'black_locations': state['black_locations'],
+        'captured_pieces_white': state['captured_pieces_white'],
+        'captured_pieces_black': state['captured_pieces_black'],
+        'turn_step': state['turn_step'],
+        'selection': state['selection'],
+        'valid_moves': state['valid_moves'],
+        'white_options': state['white_options'],
+        'black_options': state['black_options'],
+        'winner': state['winner'],
+        'game_over': state['game_over'],
+        'check': check_val,
+        'notification': notification,
+        'white_moved': state['white_moved'],
+        'black_moved': state['black_moved'],
+        'checkmate': checkmate_state,
+        'promotion': promotion_data,
+        'vs_ai': state['vs_ai'],
+        'ai_color': state['ai_color'],
+        'last_move': state['last_move']
     })
 
 if __name__ == '__main__':
