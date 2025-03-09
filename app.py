@@ -1,47 +1,55 @@
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_from_directory, session
 import os
 import random
 import copy  # Added for deep copying simulation states
 
 app = Flask(__name__)
+app.secret_key = 'your_secret_key_here'  # Added for session management
 
 # Constants
 WIDTH = 1000
 HEIGHT = 900
 
-# Game state
-white_pieces = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook',
-                'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn']
-white_locations = [(0, 0), (1, 0), (2, 0), (3, 0), (4, 0), (5, 0), (6, 0), (7, 0),
-                   (0, 1), (1, 1), (2, 1), (3, 1), (4, 1), (5, 1), (6, 1), (7, 1)]
-black_pieces = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook',
-                'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn']
-black_locations = [(0, 7), (1, 7), (2, 7), (3, 7), (4, 7), (5, 7), (6, 7), (7, 7),
-                   (0, 6), (1, 6), (2, 6), (3, 6), (4, 6), (5, 6), (6, 6), (7, 6)]
+# Initialize game state per session
+def init_game_state():
+    session['game_state'] = {
+        'white_pieces': ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook',
+                         'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn'],
+        'white_locations': [(0, 0), (1, 0), (2, 0), (3, 0), (4, 0), (5, 0), (6, 0), (7, 0),
+                            (0, 1), (1, 1), (2, 1), (3, 1), (4, 1), (5, 1), (6, 1), (7, 1)],
+        'black_pieces': ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook',
+                         'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn'],
+        'black_locations': [(0, 7), (1, 7), (2, 7), (3, 7), (4, 7), (5, 7), (6, 7), (7, 7),
+                            (0, 6), (1, 6), (2, 6), (3, 6), (4, 6), (5, 6), (6, 6), (7, 6)],
+        'white_moved': [False] * 16,
+        'black_moved': [False] * 16,
+        'captured_pieces_white': [],
+        'captured_pieces_black': [],
+        'turn_step': 0,
+        'selection': 100,
+        'valid_moves': [],
+        'game_over': False,
+        'winner': '',
+        'check': '',
+        'white_options': [],
+        'black_options': []
+    }
 
-# Track moved pieces for castling
-white_moved = [False] * len(white_pieces)
-black_moved = [False] * len(black_pieces)
-
-captured_pieces_white = []
-captured_pieces_black = []
-
-# Game variables
-turn_step = 0
-selection = 100
-valid_moves = []
-check = ''
-game_over = False
-winner = ''
+@app.before_request
+def before_request():
+    if 'game_state' not in session:
+        init_game_state()
 
 # Create directories if they don't exist
 for directory in ['images', 'audio', 'static']:
     os.makedirs(directory, exist_ok=True)
 
 def check_pawn(position, color, cur_white_locations=None, cur_black_locations=None):
-    # Use provided state if any
-    white_locs = cur_white_locations if cur_white_locations is not None else white_locations
-    black_locs = cur_black_locations if cur_black_locations is not None else black_locations
+    # Get locations from session state if not provided
+    state = session.get('game_state', {})
+    white_locs = cur_white_locations if cur_white_locations is not None else state.get('white_locations', [])
+    black_locs = cur_black_locations if cur_black_locations is not None else state.get('black_locations', [])
+    
     moves_list = []
     x, y = position
     if color == 'white':
@@ -65,8 +73,10 @@ def check_pawn(position, color, cur_white_locations=None, cur_black_locations=No
     return moves_list
 
 def check_rook(position, color, cur_white_locations=None, cur_black_locations=None):
-    white_locs = cur_white_locations if cur_white_locations is not None else white_locations
-    black_locs = cur_black_locations if cur_black_locations is not None else black_locations
+    state = session.get('game_state', {})
+    white_locs = cur_white_locations if cur_white_locations is not None else state.get('white_locations', [])
+    black_locs = cur_black_locations if cur_black_locations is not None else state.get('black_locations', [])
+    
     moves_list = []
     x, y = position
     for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
@@ -88,9 +98,10 @@ def check_rook(position, color, cur_white_locations=None, cur_black_locations=No
     return moves_list
 
 def check_knight(position, color, cur_white_locations=None, cur_black_locations=None):
-    # Use simulated state if given
-    white_locs = cur_white_locations if cur_white_locations is not None else white_locations
-    black_locs = cur_black_locations if cur_black_locations is not None else black_locations
+    state = session.get('game_state', {})
+    white_locs = cur_white_locations if cur_white_locations is not None else state.get('white_locations', [])
+    black_locs = cur_black_locations if cur_black_locations is not None else state.get('black_locations', [])
+    
     moves_list = []
     x, y = position
     targets = [(2, 1), (2, -1), (-2, 1), (-2, -1), (1, 2), (1, -2), (-1, 2), (-1, -2)]
@@ -107,8 +118,10 @@ def check_knight(position, color, cur_white_locations=None, cur_black_locations=
     return moves_list
 
 def check_bishop(position, color, cur_white_locations=None, cur_black_locations=None):
-    white_locs = cur_white_locations if cur_white_locations is not None else white_locations
-    black_locs = cur_black_locations if cur_black_locations is not None else black_locations
+    state = session.get('game_state', {})
+    white_locs = cur_white_locations if cur_white_locations is not None else state.get('white_locations', [])
+    black_locs = cur_black_locations if cur_black_locations is not None else state.get('black_locations', [])
+    
     moves_list = []
     x,y = position
     for dx, dy in [(1,1),(1,-1),(-1,1),(-1,-1)]:
@@ -136,8 +149,10 @@ def check_queen(position, color, cur_white_locations=None, cur_black_locations=N
     return moves_list
 
 def check_king_moves(position, color, index, cur_white_locations=None, cur_black_locations=None):
-    white_locs = cur_white_locations if cur_white_locations is not None else white_locations
-    black_locs = cur_black_locations if cur_black_locations is not None else black_locations
+    state = session.get('game_state', {})
+    white_locs = cur_white_locations if cur_white_locations is not None else state.get('white_locations', [])
+    black_locs = cur_black_locations if cur_black_locations is not None else state.get('black_locations', [])
+    
     moves_list = []
     if color == 'white':
         friends_list = white_locs
@@ -151,8 +166,14 @@ def check_king_moves(position, color, index, cur_white_locations=None, cur_black
     return moves_list
 
 def check_king(position, color, index, cur_white_locations=None, cur_black_locations=None):
-    white_locs = cur_white_locations if cur_white_locations is not None else white_locations
-    black_locs = cur_black_locations if cur_black_locations is not None else black_locations
+    state = session.get('game_state', {})
+    white_locs = cur_white_locations if cur_white_locations is not None else state.get('white_locations', [])
+    black_locs = cur_black_locations if cur_black_locations is not None else state.get('black_locations', [])
+    white_pieces = state.get('white_pieces', [])
+    black_pieces = state.get('black_pieces', [])
+    white_moved = state.get('white_moved', [])
+    black_moved = state.get('black_moved', [])
+    
     moves_list = []
     castle_moves = []
     if color == 'white':
@@ -224,21 +245,22 @@ def check_king(position, color, index, cur_white_locations=None, cur_black_locat
 
 def check_valid_moves(locations, options, selection):
     """Returns valid moves that don't put or leave own king in check"""
+    state = session.get('game_state', {})
     if selection == 100:
         return []
-    color = 'white' if turn_step % 2 == 0 else 'black'
+    color = 'white' if state['turn_step'] % 2 == 0 else 'black'
     valid_moves = []
     if color == 'white':
-        piece = white_pieces[selection]
-        current_pos = white_locations[selection]
+        piece = state['white_pieces'][selection]
+        current_pos = state['white_locations'][selection]
     else:
-        piece = black_pieces[selection]
-        current_pos = black_locations[selection]
+        piece = state['black_pieces'][selection]
+        current_pos = state['black_locations'][selection]
     # Build simulation state copies using deep copy
-    sim_white = copy.deepcopy(white_locations)
-    sim_black = copy.deepcopy(black_locations)
-    sim_white_pieces = copy.deepcopy(white_pieces)
-    sim_black_pieces = copy.deepcopy(black_pieces)
+    sim_white = copy.deepcopy(state['white_locations'])
+    sim_black = copy.deepcopy(state['black_locations'])
+    sim_white_pieces = copy.deepcopy(state['white_pieces'])
+    sim_black_pieces = copy.deepcopy(state['black_pieces'])
     if piece == 'pawn':
         all_moves = check_pawn(current_pos, color, sim_white, sim_black)
     elif piece == 'rook':
@@ -252,20 +274,20 @@ def check_valid_moves(locations, options, selection):
     elif piece == 'king':
         all_moves = check_king(current_pos, color, selection, sim_white, sim_black)
     for move in all_moves:
-        sim_white = copy.deepcopy(white_locations)
-        sim_black = copy.deepcopy(black_locations)
-        sim_white_pieces = copy.deepcopy(white_pieces)
-        sim_black_pieces = copy.deepcopy(black_pieces)
+        sim_white = copy.deepcopy(state['white_locations'])
+        sim_black = copy.deepcopy(state['black_locations'])
+        sim_white_pieces = copy.deepcopy(state['white_pieces'])
+        sim_black_pieces = copy.deepcopy(state['black_pieces'])
         move_coords = move if isinstance(move, tuple) else move[:2]
         if color == 'white':
-            if move_coords in black_locations:
-                captured_idx = black_locations.index(move_coords)
+            if move_coords in state['black_locations']:
+                captured_idx = state['black_locations'].index(move_coords)
                 sim_black[captured_idx] = (-1, -1)
                 sim_black_pieces[captured_idx] = None
             sim_white[selection] = move_coords
         else:
-            if move_coords in white_locations:
-                captured_idx = white_locations.index(move_coords)
+            if move_coords in state['white_locations']:
+                captured_idx = state['white_locations'].index(move_coords)
                 sim_white[captured_idx] = (-1, -1)
                 sim_white_pieces[captured_idx] = None
             sim_black[selection] = move_coords
@@ -274,10 +296,11 @@ def check_valid_moves(locations, options, selection):
     return valid_moves
 
 def is_check(color, cur_white_locations=None, cur_black_locations=None, cur_white_pieces=None, cur_black_pieces=None):
-    white_locs = cur_white_locations if cur_white_locations is not None else white_locations
-    black_locs = cur_black_locations if cur_black_locations is not None else black_locations
-    white_pcs = cur_white_pieces if cur_white_pieces is not None else white_pieces
-    black_pcs = cur_black_pieces if cur_black_pieces is not None else black_pieces
+    state = session.get('game_state', {})
+    white_locs = cur_white_locations if cur_white_locations is not None else state.get('white_locations', [])
+    black_locs = cur_black_locations if cur_black_locations is not None else state.get('black_locations', [])
+    white_pcs = cur_white_pieces if cur_white_pieces is not None else state.get('white_pieces', [])
+    black_pcs = cur_black_pieces if cur_black_pieces is not None else state.get('black_pieces', [])
     try:
         if color == 'white':
             if 'king' not in white_pcs:
@@ -317,17 +340,18 @@ def is_check(color, cur_white_locations=None, cur_black_locations=None, cur_whit
 
 def check_mate(color):
     """Return True if no legal move exists for piece(s) to remove check"""
+    state = session.get('game_state', {})
     if not is_check(color):
         return False
-    pieces = white_pieces if color == 'white' else black_pieces
-    locations = white_locations if color == 'white' else black_locations
+    pieces = state['white_pieces'] if color == 'white' else state['black_pieces']
+    locations = state['white_locations'] if color == 'white' else state['black_locations']
     for i in range(len(pieces)):
         if pieces[i] is None:
             continue
-        sim_white = copy.deepcopy(white_locations)
-        sim_black = copy.deepcopy(black_locations)
-        sim_white_pieces = copy.deepcopy(white_pieces)
-        sim_black_pieces = copy.deepcopy(black_pieces)
+        sim_white = copy.deepcopy(state['white_locations'])
+        sim_black = copy.deepcopy(state['black_locations'])
+        sim_white_pieces = copy.deepcopy(state['white_pieces'])
+        sim_black_pieces = copy.deepcopy(state['black_pieces'])
         current_pos = locations[i]
         if pieces[i] == 'pawn':
             moves = check_pawn(current_pos, color, sim_white, sim_black)
@@ -342,20 +366,20 @@ def check_mate(color):
         elif pieces[i] == 'king':
             moves = check_king(current_pos, color, i, sim_white, sim_black)
         for move in moves:
-            sim_white = copy.deepcopy(white_locations)
-            sim_black = copy.deepcopy(black_locations)
-            sim_white_pieces = copy.deepcopy(white_pieces)
-            sim_black_pieces = copy.deepcopy(black_pieces)
+            sim_white = copy.deepcopy(state['white_locations'])
+            sim_black = copy.deepcopy(state['black_locations'])
+            sim_white_pieces = copy.deepcopy(state['white_pieces'])
+            sim_black_pieces = copy.deepcopy(state['black_pieces'])
             move_coords = move if isinstance(move, tuple) else move[:2]
             if color == 'white':
-                if move_coords in black_locations:
-                    captured_idx = black_locations.index(move_coords)
+                if move_coords in state['black_locations']:
+                    captured_idx = state['black_locations'].index(move_coords)
                     sim_black[captured_idx] = (-1, -1)
                     sim_black_pieces[captured_idx] = None
                 sim_white[i] = move_coords
             else:
-                if move_coords in white_locations:
-                    captured_idx = white_locations.index(move_coords)
+                if move_coords in state['white_locations']:
+                    captured_idx = state['white_locations'].index(move_coords)
                     sim_white[captured_idx] = (-1, -1)
                     sim_white_pieces[captured_idx] = None
                 sim_black[i] = move_coords
@@ -365,6 +389,7 @@ def check_mate(color):
 
 def check_options(pieces, locations, turn):
     all_moves_list = []
+    state = session.get('game_state', {})
     for i in range(len(pieces)):
         # Skip pieces that are captured
         if pieces[i] is None:
@@ -372,8 +397,8 @@ def check_options(pieces, locations, turn):
             continue
         if turn == 'white' or turn == 'black':
             # Use deep copies of board state for accuracy
-            sim_white = copy.deepcopy(white_locations)
-            sim_black = copy.deepcopy(black_locations)
+            sim_white = copy.deepcopy(state['white_locations'])
+            sim_black = copy.deepcopy(state['black_locations'])
             piece = pieces[i]
             if piece == 'pawn':
                 moves_list = check_pawn(locations[i], turn, sim_white, sim_black)
@@ -408,36 +433,34 @@ def index():
 
 @app.route('/move', methods=['POST'])
 def make_move():
-    global turn_step, selection, valid_moves, winner, game_over, check
-    global white_moved, black_moved, white_pieces, black_pieces, white_locations, black_locations
-    
-    if game_over:
+    state = session['game_state']
+    if state['game_over']:
         return jsonify({'game_over': True})
     
     data = request.json
     piece_index = data['piece_index']
     move = tuple(data['move'])
     
-    if turn_step % 2 == 0:
-        pieces = white_pieces
-        locations = white_locations
-        moved = white_moved
-        enemies_list = black_locations
-        enemies_pieces = black_pieces
+    if state['turn_step'] % 2 == 0:
+        pieces = state['white_pieces']
+        locations = state['white_locations']
+        moved = state['white_moved']
+        enemies_list = state['black_locations']
+        enemies_pieces = state['black_pieces']
     else:
-        pieces = black_pieces
-        locations = black_locations
-        moved = black_moved
-        enemies_list = white_locations
-        enemies_pieces = white_pieces
+        pieces = state['black_pieces']
+        locations = state['black_locations']
+        moved = state['black_moved']
+        enemies_list = state['white_locations']
+        enemies_pieces = state['white_pieces']
 
     captured_index = None
     checkmate_state = False
     if move in enemies_list:
         captured_index = enemies_list.index(move)
         if enemies_pieces[captured_index] == 'king':
-            game_over = True
-            winner = 'white' if turn_step % 2 == 0 else 'black'
+            state['game_over'] = True
+            state['winner'] = 'white' if state['turn_step'] % 2 == 0 else 'black'
     
     # Update piece location
     locations[piece_index] = move
@@ -445,46 +468,46 @@ def make_move():
     
     # Handle castling
     if pieces[piece_index] == 'king':
-        if move == (6, 0) and turn_step % 2 == 0:  # White kingside
-            rook_index = white_locations.index((7, 0))
-            white_locations[rook_index] = (5, 0)
-            white_moved[rook_index] = True
-        elif move == (2, 0) and turn_step % 2 == 0:  # White queenside
-            rook_index = white_locations.index((0, 0))
-            white_locations[rook_index] = (3, 0)
-            white_moved[rook_index] = True
-        elif move == (6, 7) and turn_step % 2 == 1:  # Black kingside
-            rook_index = black_locations.index((7, 7))
-            black_locations[rook_index] = (5, 7)
-            black_moved[rook_index] = True
-        elif move == (2, 7) and turn_step % 2 == 1:  # Black queenside
-            rook_index = black_locations.index((0, 7))
-            black_locations[rook_index] = (3, 7)
-            black_moved[rook_index] = True
+        if move == (6, 0) and state['turn_step'] % 2 == 0:  # White kingside
+            rook_index = state['white_locations'].index((7, 0))
+            state['white_locations'][rook_index] = (5, 0)
+            state['white_moved'][rook_index] = True
+        elif move == (2, 0) and state['turn_step'] % 2 == 0:  # White queenside
+            rook_index = state['white_locations'].index((0, 0))
+            state['white_locations'][rook_index] = (3, 0)
+            state['white_moved'][rook_index] = True
+        elif move == (6, 7) and state['turn_step'] % 2 == 1:  # Black kingside
+            rook_index = state['black_locations'].index((7, 7))
+            state['black_locations'][rook_index] = (5, 7)
+            state['black_moved'][rook_index] = True
+        elif move == (2, 7) and state['turn_step'] % 2 == 1:  # Black queenside
+            rook_index = state['black_locations'].index((0, 7))
+            state['black_locations'][rook_index] = (3, 7)
+            state['black_moved'][rook_index] = True
 
     # Mark captured piece instead of pop
     if captured_index is not None:
-        if turn_step % 2 == 0:
-            captured_pieces_white.append(enemies_pieces[captured_index])
+        if state['turn_step'] % 2 == 0:
+            state['captured_pieces_white'].append(enemies_pieces[captured_index])
         else:
-            captured_pieces_black.append(enemies_pieces[captured_index])
+            state['captured_pieces_black'].append(enemies_pieces[captured_index])
         enemies_pieces[captured_index] = None
         enemies_list[captured_index] = (-1, -1)
     
     promotion_data = None
     if pieces[piece_index] == 'pawn':
-        if (turn_step % 2 == 0 and move[1] == 7) or (turn_step % 2 == 1 and move[1] == 0):
+        if (state['turn_step'] % 2 == 0 and move[1] == 7) or (state['turn_step'] % 2 == 1 and move[1] == 0):
             promotion_data = {
-                'color': 'white' if turn_step % 2 == 0 else 'black',
+                'color': 'white' if state['turn_step'] % 2 == 0 else 'black',
                 'index': piece_index
             }
     
-    black_options = check_options(black_pieces, black_locations, 'black')
-    white_options = check_options(white_pieces, white_locations, 'white')
+    state['black_options'] = check_options(state['black_pieces'], state['black_locations'], 'black')
+    state['white_options'] = check_options(state['white_pieces'], state['white_locations'], 'white')
     
-    current_side = 'white' if turn_step % 2 == 1 else 'black'
-    opponent_side = 'black' if turn_step % 2 == 1 else 'white'
-    if not game_over:
+    current_side = 'white' if state['turn_step'] % 2 == 1 else 'black'
+    opponent_side = 'black' if state['turn_step'] % 2 == 1 else 'white'
+    if not state['game_over']:
         check_val = ''
         checkmate_state = False
         if is_check(current_side) and check_mate(current_side):
@@ -501,29 +524,30 @@ def make_move():
         check_val = ''
         checkmate_state = False
     
-    turn_step += 1
-    selection = 100
-    valid_moves = []
-    notification = getNotification(check_val, game_over, turn_step, checkmate_state)
+    state['turn_step'] += 1
+    state['selection'] = 100
+    state['valid_moves'] = []
+    notification = getNotification(check_val, state['game_over'], state['turn_step'], checkmate_state)
     
+    session['game_state'] = state
     return jsonify({
-        'white_pieces': white_pieces,
-        'white_locations': white_locations,
-        'black_pieces': black_pieces,
-        'black_locations': black_locations,
-        'captured_pieces_white': captured_pieces_white,
-        'captured_pieces_black': captured_pieces_black,
-        'turn_step': turn_step,
-        'selection': selection,
-        'valid_moves': valid_moves,
-        'white_options': white_options,
-        'black_options': black_options,
-        'winner': winner,
-        'game_over': game_over,
+        'white_pieces': state['white_pieces'],
+        'white_locations': state['white_locations'],
+        'black_pieces': state['black_pieces'],
+        'black_locations': state['black_locations'],
+        'captured_pieces_white': state['captured_pieces_white'],
+        'captured_pieces_black': state['captured_pieces_black'],
+        'turn_step': state['turn_step'],
+        'selection': state['selection'],
+        'valid_moves': state['valid_moves'],
+        'white_options': state['white_options'],
+        'black_options': state['black_options'],
+        'winner': state['winner'],
+        'game_over': state['game_over'],
         'check': check_val,
         'notification': notification,
-        'white_moved': white_moved,
-        'black_moved': black_moved,
+        'white_moved': state['white_moved'],
+        'black_moved': state['black_moved'],
         'checkmate': checkmate_state,
         'promotion': promotion_data
     })
@@ -542,23 +566,23 @@ def serve_static(filename):
 
 @app.route('/state', methods=['GET'])
 def get_state():
-    global black_options, white_options
+    state = session['game_state']
     # Calculate valid moves for both sides
-    black_options = check_options(black_pieces, black_locations, 'black')
-    white_options = check_options(white_pieces, white_locations, 'white')
+    state['black_options'] = check_options(state['black_pieces'], state['black_locations'], 'black')
+    state['white_options'] = check_options(state['white_pieces'], state['white_locations'], 'white')
     
     # Get current valid moves based on selection
     current_valid_moves = []
-    if selection != 100:
-        if turn_step % 2 == 0:  # White's turn
-            current_valid_moves = white_options[selection]
+    if state['selection'] != 100:
+        if state['turn_step'] % 2 == 0:  # White's turn
+            current_valid_moves = state['white_options'][state['selection']]
         else:  # Black's turn
-            current_valid_moves = black_options[selection]
+            current_valid_moves = state['black_options'][state['selection']]
     
     # Recalculate check value freshly instead of reusing the global variable
     current_check = ''
-    current_side = 'white' if turn_step % 2 == 1 else 'black'
-    opponent_side = 'black' if turn_step % 2 == 1 else 'white'
+    current_side = 'white' if state['turn_step'] % 2 == 1 else 'black'
+    opponent_side = 'black' if state['turn_step'] % 2 == 1 else 'white'
     
     current_check = ''
     checkmate_state = False
@@ -570,33 +594,33 @@ def get_state():
         current_check = opponent_side
         checkmate_state = check_mate(opponent_side)
         
-    notification = getNotification(current_check, game_over, turn_step, checkmate_state)
+    notification = getNotification(current_check, state['game_over'], state['turn_step'], checkmate_state)
     
     return jsonify({
-        'white_pieces': white_pieces,
-        'white_locations': white_locations,
-        'black_pieces': black_pieces,
-        'black_locations': black_locations,
-        'captured_pieces_white': captured_pieces_white,
-        'captured_pieces_black': captured_pieces_black,
-        'turn_step': turn_step,
-        'selection': selection,
+        'white_pieces': state['white_pieces'],
+        'white_locations': state['white_locations'],
+        'black_pieces': state['black_pieces'],
+        'black_locations': state['black_locations'],
+        'captured_pieces_white': state['captured_pieces_white'],
+        'captured_pieces_black': state['captured_pieces_black'],
+        'turn_step': state['turn_step'],
+        'selection': state['selection'],
         'valid_moves': current_valid_moves,
-        'white_options': white_options,
-        'black_options': black_options,
-        'winner': winner,
-        'game_over': game_over,
+        'white_options': state['white_options'],
+        'black_options': state['black_options'],
+        'winner': state['winner'],
+        'game_over': state['game_over'],
         'check': current_check,
         'notification': notification,
-        'white_moved': white_moved,
-        'black_moved': black_moved,
+        'white_moved': state['white_moved'],
+        'black_moved': state['black_moved'],
         'checkmate': checkmate_state  # Add this field
     })
 
 @app.route('/promote', methods=['POST'])
 def promote():
     """Handle pawn promotion with player-selected piece"""
-    global white_pieces, black_pieces
+    state = session['game_state']
     
     data = request.json
     color = data['color']
@@ -610,69 +634,30 @@ def promote():
     
     # Update the piece
     if color == 'white':
-        white_pieces[index] = piece
+        state['white_pieces'][index] = piece
     else:
-        black_pieces[index] = piece
+        state['black_pieces'][index] = piece
         
     # Recalculate options after promotion
-    black_options = check_options(black_pieces, black_locations, 'black')
-    white_options = check_options(white_pieces, white_locations, 'white')
+    state['black_options'] = check_options(state['black_pieces'], state['black_locations'], 'black')
+    state['white_options'] = check_options(state['white_pieces'], state['white_locations'], 'white')
     
+    session['game_state'] = state
     return jsonify({
-        'white_pieces': white_pieces,
-        'white_locations': white_locations,
-        'black_pieces': black_pieces,
-        'black_locations': black_locations,
-        'white_options': white_options,
-        'black_options': black_options
+        'white_pieces': state['white_pieces'],
+        'white_locations': state['white_locations'],
+        'black_pieces': state['black_pieces'],
+        'black_locations': state['black_locations'],
+        'white_options': state['white_options'],
+        'black_options': state['black_options']
     })
 
 @app.route('/reset', methods=['POST'])
 def reset_board():
-    global white_pieces, white_locations, black_pieces, black_locations, captured_pieces_white, captured_pieces_black, turn_step, selection, valid_moves, winner, game_over, check, white_moved, black_moved, black_options, white_options
-    
-    # Reset game state
-    white_pieces = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook',
-                    'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn']
-    white_locations = [(0, 0), (1, 0), (2, 0), (3, 0), (4, 0), (5, 0), (6, 0), (7, 0),
-                       (0, 1), (1, 1), (2, 1), (3, 1), (4, 1), (5, 1), (6, 1), (7, 1)]
-    black_pieces = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook',
-                    'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn']
-    black_locations = [(0, 7), (1, 7), (2, 7), (3, 7), (4, 7), (5, 7), (6, 7), (7, 7),
-                       (0, 6), (1, 6), (2, 6), (3, 6), (4, 6), (5, 6), (6, 6), (7, 6)]
-    captured_pieces_white = []
-    captured_pieces_black = []
-    turn_step = 0
-    selection = 100
-    valid_moves = []
-    winner = ''
-    game_over = False
-    check = ''
-    white_moved = [False] * len(white_pieces)
-    black_moved = [False] * len(black_pieces)
-    
-    # Recalculate valid moves for both sides
-    black_options = check_options(black_pieces, black_locations, 'black')
-    white_options = check_options(white_pieces, white_locations, 'white')
-    
-    return jsonify({
-        'white_pieces': white_pieces,
-        'white_locations': white_locations,
-        'black_pieces': black_pieces,
-        'black_locations': black_locations,
-        'captured_pieces_white': captured_pieces_white,
-        'captured_pieces_black': captured_pieces_black,
-        'turn_step': turn_step,
-        'selection': selection,
-        'valid_moves': valid_moves,
-        'white_options': white_options,
-        'black_options': black_options,
-        'winner': winner,
-        'game_over': game_over,
-        'check': check,
-        'white_moved': white_moved,
-        'black_moved': black_moved
-    })
+    init_game_state()
+    state = session['game_state']
+    # ...if needed, recalc options...
+    return jsonify(state)
 
 @app.route('/restart', methods=['POST'])
 def restart_game():
