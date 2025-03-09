@@ -13,7 +13,6 @@
             align-items: center;
             background-color: #1a1a1a;
             color: white;
-            touch-action: none;
         }
         #game-info {
             margin: 20px 0;
@@ -109,11 +108,6 @@
         .row-label { width: 20px; height: 100px; line-height: 100px; }
         .button-row { display: flex; gap: 10px; margin: 10px 0; }
         #restart-btn, #toggle-grid-btn { padding: 10px 20px; font-size: 18px; cursor: pointer; }
-        @media (max-width: 600px) {
-            #chessboard-wrapper { padding: 20px; }
-            .column-label { width: 50px; }
-            .row-label { height: 50px; line-height: 50px; }
-        }
         .promotion-option.selected {
             background-color: #5a5a5a;
             box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
@@ -130,9 +124,6 @@
             height: 80px;
             transition: none;
         }
-        @media (max-width: 768px) {
-            .piece-dragging { width: 40px; height: 40px; }
-        }
         .square.drag-over { box-shadow: inset 0 0 10px #ffff00; }
         .square.valid-drop-target { background-color: rgba(0, 255, 0, 0.3); }
         .square.valid-drop-target.castle-move { background-color: rgba(0, 0, 255, 0.5) !important; }
@@ -148,9 +139,6 @@
             position: absolute;
             width: 100%;
             height: 100%;
-        }
-        @media (max-width: 600px) {
-            #move-arrow { transform: scale(0.5) rotate(180deg); transform-origin: top left; }
         }
         .button-container {
             display: flex;
@@ -177,17 +165,6 @@
         #toggle-grid-btn:hover { background-color: #46b8da; }
         #ai-btn { background-color: #5cb85c; }
         #ai-btn:hover { background-color: #4cae4c; }
-        @media (max-width: 768px) {
-            #chessboard { grid-template-columns: repeat(8, 40px); grid-template-rows: repeat(8, 40px); }
-            .piece-image { max-width: 35px; max-height: 35px; }
-            .button-container { width: 100%; padding: 0 15px; box-sizing: border-box; }
-            .outside-label { font-size: 12px; }
-            .grid-label { font-size: 10px; }
-            #sound-icon { width: 30px; height: 30px; }
-            .captured-piece { width: 20px; height: 20px; margin: 1px; }
-            body.dragging { overflow: hidden; position: fixed; width: 100%; }
-        }
-        /* Update sound icon styling for smaller size and fixed position */
         #sound-icon {
             position: fixed;
             bottom: 15px;
@@ -209,36 +186,49 @@
             width: 100%;
             height: 100%;
         }
-        
-        /* Ensure the sound icon stays small on mobile as well */
+        /* Add mobile-specific responsive styles */
         @media (max-width: 768px) {
-            /* ...existing media query rules... */
+            #chessboard {
+                grid-template-columns: repeat(8, 40px);
+                grid-template-rows: repeat(8, 40px);
+            }
+            .piece-image {
+                max-width: 35px;
+                max-height: 35px;
+                touch-action: none; /* Prevent browser handling of touches */
+            }
+            .button-container {
+                width: 100%;
+                padding: 0 15px;
+                box-sizing: border-box;
+            }
+            .outside-label {
+                font-size: 12px;
+            }
+            .grid-label {
+                font-size: 10px;
+            }
             #sound-icon {
                 width: 18px;
                 height: 18px;
                 padding: 3px;
             }
-        }
-    </style>
-    <style>
-        /* Update move arrow styling for better visibility on mobile */
-        #move-arrow {
-            position: absolute;
-            pointer-events: none;
-            z-index: 25; /* Higher z-index to ensure visibility */
-            transform: rotate(180deg);
-        }
-        #move-arrow svg {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-        }
-        @media (max-width: 768px) {
-            #move-arrow { 
-                transform: rotate(180deg); /* Don't scale down on mobile */
-                z-index: 30; /* Even higher z-index on mobile */
+            .captured-piece {
+                width: 20px;
+                height: 20px;
+                margin: 1px;
             }
-            /* Increase visibility of valid moves on mobile */
+            body.dragging {
+                overflow: hidden;
+                position: fixed;
+                width: 100%;
+            }
+            #move-arrow { 
+                transform: rotate(180deg);
+                z-index: 30;
+                display: block !important;
+                opacity: 1 !important;
+            }
             .valid-move {
                 background-color: rgba(0, 255, 0, 0.7) !important;
                 box-shadow: inset 0 0 12px #00ff00;
@@ -247,6 +237,85 @@
                 background-color: rgba(0, 0, 255, 0.7) !important;
                 box-shadow: inset 0 0 12px #0000ff;
             }
+            .piece-dragging {
+                width: 50px;
+                height: 50px;
+                opacity: 1 !important;
+                z-index: 2000 !important;
+                pointer-events: none;
+                position: absolute; /* Use absolute instead of fixed for better positioning */
+                box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            }
+        }
+        
+        /* Enhance drag and drop appearance */
+        .piece-dragging {
+            opacity: 1;
+            cursor: grabbing;
+            pointer-events: none;
+            position: absolute; /* Use absolute instead of fixed for better positioning */
+            z-index: 1000;
+            transform: translate(-50%, -50%);
+            width: 80px;
+            height: 80px;
+            transition: none;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        @media (max-width: 768px) {
+            /* Improve touch handling on mobile */
+            .piece-image {
+                touch-action: none; /* Prevent browser handling of touches */
+            }
+            .piece-dragging {
+                width: 50px !important;
+                height: 50px !important;
+                opacity: 1 !important;
+                z-index: 2000 !important;
+                transform: none !important; /* Don't use translate which can cause positioning issues */
+                position: absolute; /* Use absolute instead of fixed for better positioning */
+            }
+        }
+        /* Make valid move indicators more visible on desktop */
+        .valid-move {
+            background-color: rgba(0, 255, 0, 0.6) !important; /* Increased opacity */
+            box-shadow: inset 0 0 6px #00ff00 !important; /* Added glow effect */
+        }
+        .castle-move {
+            background-color: rgba(0, 0, 255, 0.6) !important; 
+            box-shadow: inset 0 0 6px #0000ff !important;
+        }
+        /* Fix CSS comment syntax in media query */
+        @media (max-width: 768px) {
+            /* Existing mobile styles */
+            /* Remove incorrect comment style that uses // instead of /* */
+        }
+        /* Fix the piece-dragging styling for mobile */
+        @media (max-width: 768px) {
+            .piece-dragging {
+                width: 40px !important;
+                height: 40px !important;
+                opacity: 0.9 !important;
+                z-index: 2000 !important;
+                position: fixed !important; /* Use fixed for mobile */
+                transform: none !important;
+                pointer-events: none;
+                box-shadow: 0 0 10px rgba(0,0,0,0.5);
+                top: 0;
+                left: 0;
+            }
+        }
+        
+        /* Update desktop styling as well to be consistent */
+        .piece-dragging {
+            opacity: 0.9;
+            cursor: grabbing;
+            pointer-events: none;
+            position: fixed;
+            z-index: 1000;
+            width: 70px;
+            height: 70px;
+            transform: none; 
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
         }
     </style>
 </head>
@@ -285,12 +354,11 @@
     const soundIcon = document.getElementById('sound-icon').querySelector('img');
     let draggedPiece = null;
     let draggedPieceIndex = -1;
-    let draggedPieceOffsetX = 0;
-    let draggedPieceOffsetY = 0;
     let validDropTargets = [];
     let gridLabelMode = 3;
     let playingVsAI = false;
     let gameState = null;
+    let draggedPieceRect = null;  // NEW global variable to store the piece's bounding rectangle
 
     function createBoard() {
         let wrapper = document.getElementById('chessboard-wrapper');
@@ -360,6 +428,7 @@
         updateGridButtonText();
     }
 
+    /* Fix PC click handling for valid move highlighting */
     function handleSquareClick(index) {
         const row = Math.floor(index / 8);
         const col = index % 8;
@@ -368,6 +437,7 @@
         if (gameState.selection === 100) {
             if ((gameState.turn_step % 2 === 0 && whiteIndex !== -1) || 
                 (gameState.turn_step % 2 === 1 && blackIndex !== -1)) {
+                clearValidMoves();
                 const piece_index = gameState.turn_step % 2 === 0 ? whiteIndex : blackIndex;
                 gameState.selection = piece_index;
                 gameState.valid_moves = gameState.turn_step % 2 === 0 ? 
@@ -385,8 +455,10 @@
                 return false;
             });
             if (validMove) {
+                clearValidMoves();
                 makeMove(gameState.selection, move);
             } else {
+                clearValidMoves();
                 gameState.selection = 100;
                 gameState.valid_moves = [];
                 updateBoard();
@@ -480,7 +552,6 @@
                     img.dataset.pieceIndex = whiteIndex;
                     img.dataset.pieceColor = 'white';
                     img.addEventListener('dragstart', (e) => handleDragStart(e, whiteIndex, 'white'));
-                    img.addEventListener('touchstart', (e) => handleTouchStart(e, whiteIndex, 'white'), { passive: false });
                     square.appendChild(img);
                 }
             } else if (blackIndex !== -1) {
@@ -493,7 +564,6 @@
                     img.dataset.pieceIndex = blackIndex;
                     img.dataset.pieceColor = 'black';
                     img.addEventListener('dragstart', (e) => handleDragStart(e, blackIndex, 'black'));
-                    img.addEventListener('touchstart', (e) => handleTouchStart(e, blackIndex, 'black'), { passive: false });
                     square.appendChild(img);
                 }
             }
@@ -535,9 +605,11 @@
             });
         }
         if (gameState.last_move) {
-            requestAnimationFrame(() => {
+            setTimeout(() => {
                 drawMoveArrow(gameState.last_move.from, gameState.last_move.to);
-            });
+                // Log to confirm the arrow is being drawn
+                console.log("Drawing arrow from", gameState.last_move.from, "to", gameState.last_move.to);
+            }, 100);
         } else {
             clearMoveArrow();
         }
@@ -629,9 +701,7 @@
         arrowContainer.style.width = '100%';
         arrowContainer.style.height = '100%';
         arrowContainer.style.pointerEvents = 'none';
-        
-        // Lower the z-index to prevent covering pieces
-        arrowContainer.style.zIndex = '5'; 
+        arrowContainer.style.zIndex = '5';
         
         svg.setAttribute('width', wrapper.offsetWidth);
         svg.setAttribute('height', wrapper.offsetHeight);
@@ -658,7 +728,6 @@
         const newStartX = startX + unitX * shortenAmount;
         const newStartY = startY + unitY * shortenAmount;
         const newEndX = endX - unitX * shortenAmount;
-        // Fix the y-coordinate calculation - was using unitX incorrectly
         const newEndY = endY - unitY * shortenAmount;
         
         const strokeWidth = Math.max(2, squareSize / 20);
@@ -737,210 +806,87 @@
     }
 
     function handleDragStart(e, pieceIndex, color) {
-        if ((gameState.turn_step % 2 === 0 && color === 'white') || 
-            (gameState.turn_step % 2 === 1 && color === 'black')) {
-            draggedPiece = e.target;
-            draggedPieceIndex = pieceIndex;
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', pieceIndex);
-            gameState.selection = pieceIndex;
-            gameState.valid_moves = gameState.turn_step % 2 === 0 ? 
-                gameState.white_options[pieceIndex] : 
-                gameState.black_options[pieceIndex];
-                
-            const castleMoves = gameState.valid_moves.filter(vm => 
-                Array.isArray(vm) && vm.length > 2 && typeof vm[2] === 'string' && vm[2].includes('castle')
-            );
-            
-            validDropTargets = gameState.valid_moves.map(move => {
-                const [col, row] = Array.isArray(move) ? move.slice(0, 2) : move;
-                return row * 8 + col;
-            });
-            
-            validDropTargets.forEach(index => {
-                const square = document.querySelector(`.square[data-index="${index}"]`);
-                if (square) {
-                    square.classList.add('valid-drop-target');
-                    
-                    const row = Math.floor(index / 8);
-                    const col = index % 8;
-                    const isCastleMove = castleMoves.some(move => 
-                        move[0] === col && move[1] === row
-                    );
-                    
-                    if (isCastleMove) {
-                        square.classList.add('castle-move');
-                    }
-                }
-            });
-            
-            setTimeout(() => {
-                if (draggedPiece) draggedPiece.classList.add('dragging');
-            }, 0);
-            
-            draggedPiece.addEventListener('dragend', cleanupDrag, { once: true });
-        } else {
+        // Skip if not this player's turn
+        if (!((gameState.turn_step % 2 === 0 && color === 'white') || 
+              (gameState.turn_step % 2 === 1 && color === 'black'))) {
             e.preventDefault();
+            return;
         }
+
+        // Set up the drag operation
+        draggedPiece = e.target;
+        draggedPieceIndex = pieceIndex;
+        
+        // Set dataTransfer properties for desktop drag
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', pieceIndex);
+        
+        // Update game state and show valid moves
+        gameState.selection = pieceIndex;
+        gameState.valid_moves = gameState.turn_step % 2 === 0 ? 
+            gameState.white_options[pieceIndex] : 
+            gameState.black_options[pieceIndex];
+        
+        // Highlight valid moves
+        clearValidMoves(); // Clear any existing highlights first
+        
+        // Find castle moves for special highlighting
+        const castleMoves = gameState.valid_moves.filter(vm => 
+            Array.isArray(vm) && vm.length > 2 && 
+            typeof vm[2] === 'string' && vm[2].includes('castle')
+        );
+        
+        // Mark valid drop targets
+        validDropTargets = gameState.valid_moves.map(move => {
+            const [col, row] = Array.isArray(move) ? move.slice(0, 2) : move;
+            return row * 8 + col;
+        });
+        
+        validDropTargets.forEach(index => {
+            const square = document.querySelector(`.square[data-index="${index}"]`);
+            if (square) {
+                square.classList.add('valid-drop-target');
+                
+                const row = Math.floor(index / 8);
+                const col = index % 8;
+                const isCastleMove = castleMoves.some(move => 
+                    move[0] === col && move[1] === row
+                );
+                
+                if (isCastleMove) {
+                    square.classList.add('castle-move');
+                }
+            }
+        });
+        
+        // Add the dragging class after a short delay
+        setTimeout(() => {
+            if (draggedPiece) {
+                draggedPiece.classList.add('dragging');
+            }
+        }, 0);
+        
+        // Add cleanup on drag end
+        draggedPiece.addEventListener('dragend', cleanupDrag, { once: true });
     }
 
     function cleanupDrag() {
+        // Clear all valid move highlighting
         validDropTargets.forEach(index => {
             const square = document.querySelector(`.square[data-index="${index}"]`);
             if (square) {
                 square.classList.remove('valid-drop-target');
                 square.classList.remove('castle-move');
+                square.classList.remove('drag-over');
             }
         });
+        
+        // Remove dragging class from the piece
         if (draggedPiece) {
             draggedPiece.classList.remove('dragging');
         }
-        draggedPiece = null;
-        draggedPieceIndex = -1;
-        validDropTargets = [];
-    }
-
-    function handleTouchStart(e, pieceIndex, color) {
-        // First check if this is a valid piece selection
-        if ((gameState.turn_step % 2 === 0 && color === 'white') || 
-            (gameState.turn_step % 2 === 1 && color === 'black')) {
-            
-            // Prevent default to avoid browser handling
-            e.preventDefault();
-            
-            // If we're just selecting a new piece to see its moves
-            if (gameState.selection !== pieceIndex) {
-                // Select this piece to show moves
-                gameState.selection = pieceIndex;
-                gameState.valid_moves = gameState.turn_step % 2 === 0 ? 
-                    gameState.white_options[pieceIndex] : 
-                    gameState.black_options[pieceIndex];
-                
-                // Update board UI and show valid moves
-                updateBoard();
-                highlightValidMoves();
-                
-                // Stop here - don't start dragging on first tap
-                return;
-            }
-            
-            // If the piece is already selected, now start the drag
-            const touch = e.touches[0];
-            const target = e.target;
-            
-            document.querySelectorAll('.piece-dragging').forEach(el => el.remove());
-            
-            const clone = target.cloneNode(true);
-            clone.classList.add('piece-dragging');
-            document.body.appendChild(clone);
-            
-            const rect = target.getBoundingClientRect();
-            draggedPiece = target;
-            draggedPieceIndex = pieceIndex;
-            
-            draggedPieceOffsetX = rect.width / 2;
-            draggedPieceOffsetY = rect.height / 2;
-            
-            clone.style.left = `${touch.clientX}px`;
-            clone.style.top = `${touch.clientY}px`;
-            
-            gameState.selection = pieceIndex;
-            gameState.valid_moves = gameState.turn_step % 2 === 0 ? 
-                gameState.white_options[pieceIndex] : 
-                gameState.black_options[pieceIndex];
-                
-            const castleMoves = gameState.valid_moves.filter(vm => 
-                Array.isArray(vm) && vm.length > 2 && typeof vm[2] === 'string' && vm[2].includes('castle')
-            );
-            
-            validDropTargets = gameState.valid_moves.map(move => {
-                const [col, row] = Array.isArray(move) ? move.slice(0, 2) : move;
-                return row * 8 + col;
-            });
-            
-            validDropTargets.forEach(index => {
-                const square = document.querySelector(`.square[data-index="${index}"]`);
-                if (square) {
-                    square.classList.add('valid-drop-target');
-                    
-                    const row = Math.floor(index / 8);
-                    const col = index % 8;
-                    const isCastleMove = castleMoves.some(move => 
-                        move[0] === col && move[1] === row
-                    );
-                    
-                    if (isCastleMove) {
-                        square.classList.add('castle-move');
-                    }
-                }
-            });
-            
-            document.addEventListener('touchmove', handleTouchMove, { passive: false });
-            document.addEventListener('touchend', handleTouchEnd, { once: true });
-            document.addEventListener('touchcancel', cleanupTouch, { once: true });
-        }
-    }
-
-    function handleTouchMove(e) {
-        e.preventDefault();
-        if (!draggedPiece) return;
         
-        const touch = e.touches[0];
-        const clone = document.querySelector('.piece-dragging');
-        if (clone) {
-            clone.style.left = `${touch.clientX - draggedPieceOffsetX}px`;
-            clone.style.top = `${touch.clientY - draggedPieceOffsetY}px`;
-            
-            const elementsAtPoint = document.elementsFromPoint(touch.clientX, touch.clientY);
-            const squareUnderTouch = elementsAtPoint.find(el => el.classList.contains('square'));
-            
-            document.querySelectorAll('.square.drag-over').forEach(sq => {
-                if (sq !== squareUnderTouch) {
-                    sq.classList.remove('drag-over');
-                }
-            });
-            
-            if (squareUnderTouch) {
-                const squareIndex = parseInt(squareUnderTouch.dataset.index);
-                if (validDropTargets.includes(squareIndex)) {
-                    squareUnderTouch.classList.add('drag-over');
-                }
-            }
-        }
-    }
-    
-    function handleTouchEnd(e) {
-        if (!draggedPiece) return;
-        
-        e.preventDefault();
-        
-        const touch = e.changedTouches[0];
-        const elementsAtPoint = document.elementsFromPoint(touch.clientX, touch.clientY);
-        const squareUnderTouch = elementsAtPoint.find(el => el.classList.contains('square'));
-        
-        if (squareUnderTouch) {
-            const squareIndex = parseInt(squareUnderTouch.dataset.index);
-            if (validDropTargets.includes(squareIndex)) {
-                makeMove(draggedPieceIndex, [squareIndex % 8, Math.floor(squareIndex / 8)]);
-            }
-        }
-        
-        cleanupTouch();
-    }
-
-    function cleanupTouch() {
-        document.querySelectorAll('.piece-dragging').forEach(clone => clone.remove());
-        
-        document.querySelectorAll('.valid-drop-target').forEach(square => {
-            square.classList.remove('valid-drop-target');
-            square.classList.remove('castle-move');
-            square.classList.remove('drag-over');
-        });
-        
-        document.removeEventListener('touchmove', handleTouchMove);
-        document.removeEventListener('touchend', handleTouchEnd);
-        document.removeEventListener('touchcancel', cleanupTouch);
-        
+        // Reset drag state variables
         draggedPiece = null;
         draggedPieceIndex = -1;
         validDropTargets = [];
@@ -1108,8 +1054,23 @@
 
     /* Add a new function to highlight valid moves */
     function highlightValidMoves() {
-        if (!gameState.valid_moves) return;
+        if (!gameState.valid_moves) {
+            console.log("No valid moves to highlight");
+            return;
+        }
         
+        // Log valid moves for debugging
+        console.log("Highlighting valid moves:", gameState.valid_moves);
+        
+        // Clear any existing highlights first to ensure clean state
+        document.querySelectorAll('.square.valid-move').forEach(square => {
+            square.classList.remove('valid-move');
+        });
+        document.querySelectorAll('.square.castle-move').forEach(square => {
+            square.classList.remove('castle-move');
+        });
+        
+        // Now apply the highlights
         gameState.valid_moves.forEach(move => {
             if (Array.isArray(move) && move.length >= 2) {
                 const [col, row] = move;
@@ -1122,10 +1083,240 @@
                     if (move.length > 2 && typeof move[2] === 'string' && move[2].includes('castle')) {
                         square.classList.add('castle-move');
                     }
+                    
+                    console.log(`Highlighted square at ${col},${row} (index ${index})`);
+                } else {
+                    console.log(`Could not find square at ${col},${row} (index ${index})`);
                 }
             }
         });
     }
+
+    /* Make sure the clearValidMoves function properly removes all highlighting classes */
+    function clearValidMoves() {
+        document.querySelectorAll('.square.valid-move').forEach(square => {
+            square.classList.remove('valid-move');
+        });
+        document.querySelectorAll('.square.castle-move').forEach(square => {
+            square.classList.remove('castle-move');
+        });
+        document.querySelectorAll('.square.valid-drop-target').forEach(square => {
+            square.classList.remove('valid-drop-target');
+        });
+        document.querySelectorAll('.square.drag-over').forEach(square => {
+            square.classList.remove('drag-over');
+        });
+    }
+
+    /* Add touch event handlers for mobile devices */
+
+    function handleTouchStart(e, pieceIndex, color) {
+        // Only proceed if it's this player's turn
+        if (!((gameState.turn_step % 2 === 0 && color === 'white') || 
+              (gameState.turn_step % 2 === 1 && color === 'black'))) {
+            return;
+        }
+
+        // IMMEDIATELY prevent default behavior
+        e.preventDefault();
+        e.stopPropagation();
+        
+        console.log("Touch start on piece:", pieceIndex, color);
+        
+        // Clear any existing drag state
+        cleanupTouch();
+        
+        // Set up game state
+        gameState.selection = pieceIndex;
+        gameState.valid_moves = gameState.turn_step % 2 === 0 ? 
+            gameState.white_options[pieceIndex] : 
+            gameState.black_options[pieceIndex];
+        
+        // Create draggable element IMMEDIATELY
+        const touch = e.touches[0];
+        const target = e.target;
+        draggedPiece = target;
+        draggedPieceIndex = pieceIndex;
+        
+        // Create clone that will follow the finger
+        const clone = document.createElement('img');
+        clone.src = target.src;
+        clone.classList.add('piece-dragging');
+        document.body.appendChild(clone);
+        
+        // Set the clone's position immediately to where the finger is
+        const touchX = touch.clientX;
+        const touchY = touch.clientY;
+        positionCloneAtTouch(clone, touchX, touchY);
+        
+        // Set up valid drop targets
+        validDropTargets = gameState.valid_moves.map(move => {
+            const [col, row] = Array.isArray(move) ? move.slice(0, 2) : move;
+            return row * 8 + col;
+        });
+        
+        // Highlight valid targets
+        validDropTargets.forEach(index => {
+            const square = document.querySelector(`.square[data-index="${index}"]`);
+            if (square) {
+                square.classList.add('valid-drop-target');
+                
+                // Check for castle move
+                const row = Math.floor(index / 8);
+                const col = index % 8;
+                const isCastleMove = gameState.valid_moves.some(move => {
+                    return Array.isArray(move) && move.length > 2 && 
+                           move[0] === col && move[1] === row && 
+                           typeof move[2] === 'string' && move[2].includes('castle');
+                });
+                
+                if (isCastleMove) {
+                    square.classList.add('castle-move');
+                }
+            }
+        });
+        
+        // Set up touch move & end listeners and prevent scrolling
+        document.body.classList.add('dragging'); 
+        document.addEventListener('touchmove', handleTouchMove, { passive: false });
+        document.addEventListener('touchend', handleTouchEnd, { once: true, passive: false });
+        document.addEventListener('touchcancel', cleanupTouch, { once: true });
+    }
+
+    // Improved positioning function that works reliably on mobile
+    function positionCloneAtTouch(element, x, y) {
+        const size = (window.innerWidth <= 768) ? 20 : 35; // Half width for mobile/desktop
+        element.style.left = `${x - size}px`;
+        element.style.top = `${y - size}px`;
+    }
+
+    function handleTouchMove(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (!draggedPiece) return;
+        
+        const touch = e.touches[0];
+        const clone = document.querySelector('.piece-dragging');
+        
+        if (clone) {
+            // Use requestAnimationFrame for smoother updates
+            requestAnimationFrame(() => {
+                positionCloneAtTouch(clone, touch.clientX, touch.clientY);
+            });
+            
+            // Find square under finger
+            const elementsAtTouch = document.elementsFromPoint(touch.clientX, touch.clientY);
+            const squareUnderTouch = elementsAtTouch.find(el => el.classList.contains('square'));
+            
+            // Clear previous highlights
+            document.querySelectorAll('.square.drag-over').forEach(sq => {
+                if (sq !== squareUnderTouch) {
+                    sq.classList.remove('drag-over');
+                }
+            });
+            
+            // Highlight current valid target
+            if (squareUnderTouch) {
+                const squareIndex = parseInt(squareUnderTouch.dataset.index);
+                if (validDropTargets.includes(squareIndex)) {
+                    squareUnderTouch.classList.add('drag-over');
+                }
+            }
+        }
+    }
+
+    function handleTouchEnd(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (!draggedPiece) return;
+        
+        // Find the square under the finger
+        const touch = e.changedTouches[0];
+        const elementsAtTouch = document.elementsFromPoint(touch.clientX, touch.clientY);
+        const squareUnderTouch = elementsAtTouch.find(el => el.classList.contains('square'));
+        
+        // Make move if it's a valid target
+        if (squareUnderTouch) {
+            const squareIndex = parseInt(squareUnderTouch.dataset.index);
+            if (validDropTargets.includes(squareIndex)) {
+                const col = squareIndex % 8;
+                const row = Math.floor(squareIndex / 8);
+                makeMove(draggedPieceIndex, [col, row]);
+            }
+        }
+        
+        cleanupTouch();
+    }
+
+    function cleanupTouch() {
+        // Remove dragged clone
+        document.querySelectorAll('.piece-dragging').forEach(clone => clone.remove());
+        
+        // Clear highlighting
+        document.querySelectorAll('.square.valid-drop-target').forEach(square => {
+            square.classList.remove('valid-drop-target');
+        });
+        document.querySelectorAll('.square.castle-move').forEach(square => {
+            square.classList.remove('castle-move');
+        });
+        document.querySelectorAll('.square.drag-over').forEach(square => {
+            square.classList.remove('drag-over');
+        });
+        
+        // Remove event listeners
+        document.removeEventListener('touchmove', handleTouchMove);
+        document.removeEventListener('touchend', handleTouchEnd);
+        document.removeEventListener('touchcancel', cleanupTouch);
+        
+        // Reset state
+        document.body.classList.remove('dragging');
+        draggedPiece = null;
+        draggedPieceIndex = -1;
+        validDropTargets = [];
+    }
+
+    // Replace the updateBoard function's touch event binding section:
+    let originalUpdateBoard = updateBoard;
+    updateBoard = function() {
+        originalUpdateBoard();
+        
+        // Clean up any leftover drag pieces
+        document.querySelectorAll('.piece-dragging').forEach(el => el.remove());
+        
+        // Add touch AND mouse events to all pieces
+        document.querySelectorAll('.piece-image').forEach(img => {
+            const pieceIndex = parseInt(img.dataset.pieceIndex);
+            const pieceColor = img.dataset.pieceColor;
+            
+            // Replace with new element to ensure clean event listeners
+            const newImg = img.cloneNode(true);
+            img.parentNode.replaceChild(newImg, img);
+            
+            // Add touch event with non-passive flag to prevent scrolling
+            newImg.addEventListener('touchstart', function(e) {
+                handleTouchStart(e, pieceIndex, pieceColor);
+            }, { passive: false });
+            
+            // Add desktop drag support 
+            newImg.draggable = true;
+            newImg.addEventListener('dragstart', function(e) {
+                handleDragStart(e, pieceIndex, pieceColor);
+            });
+            
+            // Remove the click event here so the square's own click handler (bound in createBoard) manages PC clicks.
+        });
+    };
+
+    /* Add global error handlers to ensure cleanup */
+    window.addEventListener('touchcancel', cleanupTouch);
+    window.addEventListener('blur', cleanupTouch);
+    window.addEventListener('error', cleanupTouch);
+    window.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        return false;
+    });
     </script>
 </body>
 </html>
