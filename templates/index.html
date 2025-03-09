@@ -23,16 +23,14 @@
             align-items: center;
             text-align: center;
         }
-        #turn-display {
-            margin-bottom: 5px;
-        }
+        #turn-display { margin-bottom: 5px; }
         #chessboard {
             display: grid;
             grid-template-columns: repeat(8, 100px);
             grid-template-rows: repeat(8, 100px);
             touch-action: zoom-in;
             position: relative;
-            transform: rotate(180deg); /* Rotate the entire board */
+            transform: rotate(180deg);
         }
         .square {
             display: flex;
@@ -40,7 +38,7 @@
             align-items: center;
             cursor: pointer;
             position: relative;
-            transform: rotate(180deg); /* Rotate each square back to normal */
+            transform: rotate(180deg);
         }
         .white { background-color: #f0d9b5; }
         .black { background-color: #b58863; }
@@ -52,39 +50,22 @@
             align-items: center;
             min-height: 40px;
         }
-        .captured-piece {
-            width: 30px;
-            height: 30px;
-            margin: 2px;
-        }
+        .captured-piece { width: 30px; height: 30px; margin: 2px; }
         .piece-image {
             max-width: 80px;
             max-height: 80px;
-            user-select: none; /* Prevent text selection during drag */
+            user-select: none;
         }
-        .valid-move {
-            background-color: rgba(0, 255, 0, 0.5);
-        }
-        .castle-move {
-            background-color: rgba(0, 0, 255, 0.5) !important; /* Add !important to ensure it takes precedence */
-        }
-        #restart-btn {
-            padding: 10px 20px;
-            font-size: 18px;
-            margin: 10px 0;
-            cursor: pointer;
-        }
-        .check-indicator {
-            font-weight: bold;
-        }
-        .check-notification {
-            color: yellow; /* Change this to your desired color for check */
-        }
+        .valid-move { background-color: rgba(0, 255, 0, 0.5); }
+        .castle-move { background-color: rgba(0, 0, 255, 0.5) !important; }
+        #restart-btn { padding: 10px 20px; font-size: 18px; margin: 10px 0; cursor: pointer; }
+        .check-indicator { font-weight: bold; }
+        .check-notification { color: yellow; }
         .checkmate-notification {
             color: #ff0000;
             font-weight: bold;
-            font-size: 28px; /* Make it larger */
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5); /* Add shadow for emphasis */
+            font-size: 28px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
         #promotion-modal {
             display: none;
@@ -108,67 +89,30 @@
             background-color: #3a3a3a;
             transition: background-color 0.3s;
         }
-        .promotion-option:hover {
-            background-color: #4a4a4a;
-        }
-        .promotion-option img {
-            width: 60px;
-            height: 60px;
-        }
+        .promotion-option:hover { background-color: #4a4a4a; }
+        .promotion-option img { width: 60px; height: 60px; }
         .grid-label {
             position: absolute;
             font-size: 14px;
-            color: rgba(180, 180, 180, 0.9); /* Darker text */
+            color: rgba(180, 180, 180, 0.9);
         }
-        .grid-label.top-left {
-            top: 2px;
-            left: 2px;
-        }
-        .grid-label.bottom-right {
-            bottom: 2px;
-            right: 2px;
-        }
-        #chessboard-wrapper {
-            position: relative;
-            padding: 25px;
-            margin-bottom: 10px;
-        }
+        .grid-label.top-left { top: 2px; left: 2px; }
+        .grid-label.bottom-right { bottom: 2px; right: 2px; }
+        #chessboard-wrapper { position: relative; padding: 25px; margin-bottom: 10px; }
         .outside-label {
             position: absolute;
             font-size: 16px;
             color: rgba(180, 180, 180, 0.9);
             text-align: center;
         }
-        .column-label {
-            width: 100px;
-            height: 20px;
-        }
-        .row-label {
-            width: 20px;
-            height: 100px;
-            line-height: 100px;
-        }
-        .button-row {
-            display: flex;
-            gap: 10px;
-            margin: 10px 0;
-        }
-        #restart-btn, #toggle-grid-btn {
-            padding: 10px 20px;
-            font-size: 18px;
-            cursor: pointer;
-        }
+        .column-label { width: 100px; height: 20px; line-height: 20px; }
+        .row-label { width: 20px; height: 100px; line-height: 100px; }
+        .button-row { display: flex; gap: 10px; margin: 10px 0; }
+        #restart-btn, #toggle-grid-btn { padding: 10px 20px; font-size: 18px; cursor: pointer; }
         @media (max-width: 600px) {
-            #chessboard-wrapper {
-                padding: 20px;
-            }
-            .column-label {
-                width: 50px;
-            }
-            .row-label {
-                height: 50px;
-                line-height: 50px;
-            }
+            #chessboard-wrapper { padding: 20px; }
+            .column-label { width: 50px; }
+            .row-label { height: 50px; line-height: 50px; }
         }
         .promotion-option.selected {
             background-color: #5a5a5a;
@@ -176,33 +120,29 @@
             transform: scale(1.1);
         }
         .piece-dragging {
-            opacity: 0.6;
+            opacity: 0.8;
             cursor: grabbing;
             pointer-events: none;
-            position: absolute;
+            position: fixed;
             z-index: 1000;
             transform: translate(-50%, -50%);
+            width: 80px;
+            height: 80px;
+            transition: none;
         }
-        .square.drag-over {
-            box-shadow: inset 0 0 10px #ffff00;
+        @media (max-width: 768px) {
+            .piece-dragging { width: 40px; height: 40px; }
         }
-        .square.valid-drop-target {
-            background-color: rgba(0, 255, 0, 0.3);
-        }
-        .square.valid-drop-target.castle-move {
-            background-color: rgba(0, 0, 255, 0.5) !important;
-        }
-        .last-move-from {
-            box-shadow: inset 0 0 0 4px rgba(255, 255, 0, 0.5);
-        }
-        .last-move-to {
-            box-shadow: inset 0 0 0 4px rgba(255, 165, 0, 0.7);
-        }
+        .square.drag-over { box-shadow: inset 0 0 10px #ffff00; }
+        .square.valid-drop-target { background-color: rgba(0, 255, 0, 0.3); }
+        .square.valid-drop-target.castle-move { background-color: rgba(0, 0, 255, 0.5) !important; }
+        .last-move-from { box-shadow: inset 0 0 0 4px rgba(255, 255, 0, 0.5); }
+        .last-move-to { box-shadow: inset 0 0 0 4px rgba(255, 165, 0, 0.7); }
         #move-arrow {
             position: absolute;
             pointer-events: none;
             z-index: 5;
-            transform: rotate(180deg); /* Rotate the arrow container */
+            transform: rotate(180deg);
         }
         #move-arrow svg {
             position: absolute;
@@ -210,62 +150,15 @@
             height: 100%;
         }
         @media (max-width: 600px) {
-            #move-arrow {
-                transform: scale(0.5) rotate(180deg); /* Rotate the arrow container */
-                transform-origin: top left;
-            }
+            #move-arrow { transform: scale(0.5) rotate(180deg); transform-origin: top left; }
         }
-        /* Positioning the buttons vertically with consistent size */
         .button-container {
             display: flex;
             flex-direction: column;
             gap: 10px;
             margin: 20px 0;
             width: 200px;
-            order: 3; /* Move to the end of the flex container */
-        }
-        #restart-btn, #toggle-grid-btn {
-            padding: 10px 0;
-            font-size: 18px;
-            cursor: pointer;
-            width: 100%;
-            margin: 0;
-        }
-        /* Sound icon centered at bottom */
-        #sound-icon {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            cursor: pointer;
-            width: 24px;
-            height: 24px;
-            background-color: rgba(0, 0, 0, 0.3);
-            border-radius: 50%;
-            padding: 5px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-        }
-        #sound-icon img {
-            width: 100%;
-            height: 100%;
-        }
-        /* Remove turn choice button styles */
-        .outside-label.bottom-label {
-            transform: translateX(-50%);
-        }
-        .outside-label.left-label {
-            transform: translateY(-50%);
-        }
-        /* Style for the button container and buttons */
-        .button-container {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin: 20px 0;
-            width: 200px;
-            order: 3; /* Move to the end of the flex container */
+            order: 3;
         }
         #restart-btn, #toggle-grid-btn, #ai-btn {
             padding: 10px 0;
@@ -278,86 +171,52 @@
             color: white;
             transition: background-color 0.3s;
         }
-        #restart-btn {
-            background-color: #d9534f; /* Red color for restart button */
-        }
-        #restart-btn:hover {
-            background-color: #c9302c;
-        }
-        #toggle-grid-btn {
-            background-color: #5bc0de; /* Blue color for grid button */
-        }
-        #toggle-grid-btn:hover {
-            background-color: #46b8da;
-        }
-        #ai-btn {
-            background-color: #5cb85c; /* Green color for AI button */
-        }
-        #ai-btn:hover {
-            background-color: #4cae4c;
-        }
-        /* Mobile improvements */
+        #restart-btn { background-color: #d9534f; }
+        #restart-btn:hover { background-color: #c9302c; }
+        #toggle-grid-btn { background-color: #5bc0de; }
+        #toggle-grid-btn:hover { background-color: #46b8da; }
+        #ai-btn { background-color: #5cb85c; }
+        #ai-btn:hover { background-color: #4cae4c; }
         @media (max-width: 768px) {
-            #chessboard {
-                grid-template-columns: repeat(8, 40px);
-                grid-template-rows: repeat(8, 40px);
-            }
-            
-            .piece-image {
-                max-width: 35px;
-                max-height: 35px;
-            }
-            
-            .button-container {
-                width: 100%;
-                padding: 0 15px;
-                box-sizing: border-box;
-            }
-            
-            .outside-label {
-                font-size: 12px;
-            }
-            
-            .grid-label {
-                font-size: 10px;
-            }
-            
-            #sound-icon {
-                width: 30px;
-                height: 30px;
-            }
-            
-            .captured-piece {
-                width: 20px;
-                height: 20px;
-                margin: 1px;
-            }
-            
-            /* Prevent page scrolling when dragging */
-            body.dragging {
-                overflow: hidden;
-                position: fixed;
-                width: 100%;
-            }
+            #chessboard { grid-template-columns: repeat(8, 40px); grid-template-rows: repeat(8, 40px); }
+            .piece-image { max-width: 35px; max-height: 35px; }
+            .button-container { width: 100%; padding: 0 15px; box-sizing: border-box; }
+            .outside-label { font-size: 12px; }
+            .grid-label { font-size: 10px; }
+            #sound-icon { width: 30px; height: 30px; }
+            .captured-piece { width: 20px; height: 20px; margin: 1px; }
+            body.dragging { overflow: hidden; position: fixed; width: 100%; }
         }
-
-        /* Ensure the dragged piece is positioned correctly */
-        .piece-dragging {
-            opacity: 0.8;
-            cursor: grabbing;
-            pointer-events: none;
+        /* Update sound icon styling for smaller size and fixed position */
+        #sound-icon {
             position: fixed;
-            z-index: 1000;
-            transform: translate(-50%, -50%);
-            width: 80px;
-            height: 80px;
-            transition: none; /* Remove transitions for smoother dragging */
+            bottom: 15px;
+            right: 15px;
+            cursor: pointer;
+            width: 20px;
+            height: 20px;
+            background-color: rgba(0, 0, 0, 0.4);
+            border-radius: 50%;
+            padding: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
         }
-
+        
+        #sound-icon img {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Ensure the sound icon stays small on mobile as well */
         @media (max-width: 768px) {
-            .piece-dragging {
-                width: 40px;
-                height: 40px;
+            /* ...existing media query rules... */
+            #sound-icon {
+                width: 18px;
+                height: 18px;
+                padding: 3px;
             }
         }
     </style>
@@ -365,22 +224,17 @@
 <body>
     <div id="game-info">
         <div id="turn-display"></div>
-        <!-- Removed turn-choice-button -->
         <div id="check-display" class="check-indicator"></div>
     </div>
-    
     <div id="chessboard"></div>
     <div id="move-arrow"><svg></svg></div>
     <div id="captured-white">Captured White: <div id="captured-white-list" class="captured-pieces-container"></div></div>
     <div id="captured-black">Captured Black: <div id="captured-black-list" class="captured-pieces-container"></div></div>
-    
-    <!-- Button container (swapped order) -->
     <div class="button-container">
         <button id="restart-btn" onclick="restartGame()">Restart Game</button>
         <button id="ai-btn" onclick="playVsAI()">Play vs AI</button>
         <button id="toggle-grid-btn" onclick="toggleGridLabels()">Grid Labels</button>
     </div>
-    
     <div id="promotion-modal">
         <div style="color: white; margin-bottom: 15px; font-size: 20px;">Choose promotion piece:</div>
         <div id="promotion-options"></div>
@@ -400,13 +254,12 @@
     const promotionOptions = document.getElementById('promotion-options');
     const backgroundMusic = document.getElementById('background-music');
     const soundIcon = document.getElementById('sound-icon').querySelector('img');
-    // Remove turnChoiceBtn and nextGameTurn variables
     let draggedPiece = null;
     let draggedPieceIndex = -1;
     let draggedPieceOffsetX = 0;
     let draggedPieceOffsetY = 0;
     let validDropTargets = [];
-    let gridLabelMode = 3; // 0: All (inside & outside), 1: Outside only, 2: Inside only, 3: None
+    let gridLabelMode = 3;
     let playingVsAI = false;
     let gameState = null;
 
@@ -437,50 +290,45 @@
         createOutsideLabels();
         updateGridButtonText();
         
-        // Position the move arrow inside the wrapper
         const moveArrow = document.getElementById('move-arrow');
         wrapper.appendChild(moveArrow);
     }
 
     function createOutsideLabels() {
-        // Remove any existing outside labels first
         document.querySelectorAll('.outside-label').forEach(el => el.remove());
-        
         const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
         const wrapper = document.getElementById('chessboard-wrapper');
         const squareSize = document.querySelector('.square').offsetWidth;
         
-        // Bottom column labels (a-h) remain in order
         for (let i = 0; i < 8; i++) {
             const label = document.createElement('div');
             label.classList.add('outside-label', 'column-label', 'bottom-label');
             label.textContent = files[i];
-            label.style.left = `${25 + i * squareSize + squareSize/2 - 10}px`;
+            label.style.left = `${25 + i * squareSize + squareSize / 2 - 50}px`; // Center horizontally
             label.style.bottom = '5px';
             wrapper.appendChild(label);
         }
         
-        // Left row labels: show ranks 1 (bottom) to 8 (top)
         for (let i = 0; i < 8; i++) {
             const label = document.createElement('div');
             label.classList.add('outside-label', 'row-label', 'left-label');
-            // Instead of 8 - i, we want i+1 but placed in reverse order vertically.
             label.textContent = i + 1;
-            // Compute vertical position in reverse: i=0 should be at bottom.
             label.style.left = '5px';
-            label.style.top = `${25 + (7 - i) * squareSize + squareSize/2 - 10}px`;
+            label.style.top = `${25 + (7 - i) * squareSize + squareSize / 2 - 50}px`; // Center vertically
             wrapper.appendChild(label);
         }
     }
 
     function updateGridButtonText() {
-        // Always display "Grid Labels" regardless of mode
-        document.getElementById('toggle-grid-btn').textContent = "Grid Labels";
+        const btn = document.getElementById('toggle-grid-btn');
+        btn.textContent = (gridLabelMode === 0) ? "Hide Grid Labels" : "Show Grid Labels";
     }
 
     function toggleGridLabels() {
-        gridLabelMode = (gridLabelMode + 1) % 4;
+        gridLabelMode = (gridLabelMode === 0) ? 3 : 0;
+        createOutsideLabels();
         updateBoard();
+        updateGridButtonText();
     }
 
     function handleSquareClick(index) {
@@ -594,7 +442,7 @@
             const blackIndex = gameState.black_locations.findIndex(loc => loc[0] === col && loc[1] === row);
             if (whiteIndex !== -1) {
                 const piece = gameState.white_pieces[whiteIndex];
-                if (piece) { // Check if piece exists
+                if (piece) {
                     const img = document.createElement('img');
                     img.src = `/images/Chess_${piece === 'knight' ? 'n' : piece[0]}lt60.png`;
                     img.classList.add('piece-image');
@@ -607,7 +455,7 @@
                 }
             } else if (blackIndex !== -1) {
                 const piece = gameState.black_pieces[blackIndex];
-                if (piece) { // Check if piece exists
+                if (piece) {
                     const img = document.createElement('img');
                     img.src = `/images/Chess_${piece === 'knight' ? 'n' : piece[0]}dt60.png`;
                     img.classList.add('piece-image');
@@ -631,7 +479,6 @@
             }
             if (gridLabelMode === 0 || gridLabelMode === 2) {
                 const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-                // Use the board's internal coordinates (row 0 = rank 1)
                 const rowLabel = Math.floor(index / 8) + 1;
                 const colLabel = files[index % 8];
                 const topLeftLabel = document.createElement('div');
@@ -642,7 +489,6 @@
         });
         if (gameState.valid_moves) {
             gameState.valid_moves.forEach(move => {
-                // Check if the move is an array and has at least 2 elements
                 if (Array.isArray(move) && move.length >= 2) {
                     const [col, row] = move;
                     const index = row * 8 + col;
@@ -651,7 +497,6 @@
                     if (square) {
                         square.classList.add('valid-move');
                         
-                        // Check if this move includes castle info (move.length > 2)
                         if (move.length > 2 && typeof move[2] === 'string' && move[2].includes('castle')) {
                             square.classList.add('castle-move');
                         }
@@ -667,10 +512,8 @@
             clearMoveArrow();
         }
         
-        // Update captured pieces with images instead of text
         updateCapturedPieces(capturedWhite, gameState.captured_pieces_white, 'white');
         updateCapturedPieces(capturedBlack, gameState.captured_pieces_black, 'black');
-        
         const turnColor = gameState.turn_step % 2 === 0 ? 'WHITE' : 'BLACK';
         if (playingVsAI) {
             const playerTurnText = gameState.turn_step % 2 === 0 ? 'WHITE (You)' : 'BLACK (AI)';
@@ -696,15 +539,12 @@
     }
     
     function updateCapturedPieces(container, capturedPieces, opponentColor) {
-        // Clear the container
         container.innerHTML = '';
         
-        // If no captured pieces, return early
         if (!capturedPieces || capturedPieces.length === 0) {
             return;
         }
         
-        // Group pieces by type for more organized display
         const pieceCount = {};
         capturedPieces.forEach(piece => {
             if (!pieceCount[piece]) {
@@ -713,21 +553,18 @@
             pieceCount[piece]++;
         });
         
-        // Display each type of captured piece with count
         Object.keys(pieceCount).forEach(piece => {
             const pieceGroup = document.createElement('div');
             pieceGroup.style.display = 'inline-flex';
             pieceGroup.style.alignItems = 'center';
             pieceGroup.style.margin = '0 5px';
             
-            // Create the piece image
             const img = document.createElement('img');
             const colorPrefix = opponentColor === 'white' ? 'lt' : 'dt';
             img.src = `/images/Chess_${piece === 'knight' ? 'n' : piece[0]}${colorPrefix}60.png`;
             img.className = 'captured-piece';
             pieceGroup.appendChild(img);
             
-            // Add count badge if more than one
             if (pieceCount[piece] > 1) {
                 const count = document.createElement('span');
                 count.textContent = `×${pieceCount[piece]}`;
@@ -756,8 +593,6 @@
         const toCol = Number(to[0]);
         const toRow = Number(to[1]);
         
-        // Position arrow relative to the chessboard, not the wrapper
-        // The wrapper has 25px padding we need to account for
         arrowContainer.style.position = 'absolute';
         arrowContainer.style.left = '0';
         arrowContainer.style.top = '0';
@@ -765,11 +600,9 @@
         arrowContainer.style.height = '100%';
         arrowContainer.style.pointerEvents = 'none';
         
-        // Set svg to match the overall board dimensions
         svg.setAttribute('width', wrapper.offsetWidth);
         svg.setAttribute('height', wrapper.offsetHeight);
         
-        // Add padding offset (25px) to the square positions
         const padding = 25;
         const startX = padding + fromCol * squareSize + squareSize / 2;
         const startY = padding + fromRow * squareSize + squareSize / 2;
@@ -788,13 +621,13 @@
         const unitX = dx / length;
         const unitY = dy / length;
         
-        const shortenAmount = squareSize * 0.4; // Shortened arrow to avoid covering pieces
+        const shortenAmount = squareSize * 0.4;
         const newStartX = startX + unitX * shortenAmount;
         const newStartY = startY + unitY * shortenAmount;
         const newEndX = endX - unitX * shortenAmount;
         const newEndY = endY - unitY * shortenAmount;
         
-        const strokeWidth = Math.max(2, squareSize / 20); // Thinner stroke
+        const strokeWidth = Math.max(2, squareSize / 20);
         
         svg.innerHTML = `
             <defs>
@@ -830,7 +663,6 @@
         if (gameState && gameState.last_move) {
             setTimeout(() => {
                 drawMoveArrow(gameState.last_move.from, gameState.last_move.to);
-                // Also recreate outside labels as they depend on square size
                 createOutsideLabels();
             }, 100);
         }
@@ -838,9 +670,6 @@
 
     function restartGame() {
         board.style.pointerEvents = 'auto';
-        // Do not force playingVsAI to false
-        // Send the current vsAI flag so that in PvP mode (vsAI is false) the game resets PvP,
-        // and in AI mode (vsAI true), the game resets the AI mode.
         fetch('/restart', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -885,7 +714,6 @@
                 gameState.white_options[pieceIndex] : 
                 gameState.black_options[pieceIndex];
                 
-            // First determine castle moves to apply the castle-move class first
             const castleMoves = gameState.valid_moves.filter(vm => 
                 Array.isArray(vm) && vm.length > 2 && typeof vm[2] === 'string' && vm[2].includes('castle')
             );
@@ -900,7 +728,6 @@
                 if (square) {
                     square.classList.add('valid-drop-target');
                     
-                    // Check if this is a castling move
                     const row = Math.floor(index / 8);
                     const col = index % 8;
                     const isCastleMove = castleMoves.some(move => 
@@ -928,7 +755,7 @@
             const square = document.querySelector(`.square[data-index="${index}"]`);
             if (square) {
                 square.classList.remove('valid-drop-target');
-                square.classList.remove('castle-move'); // Also remove castle-move class
+                square.classList.remove('castle-move');
             }
         });
         if (draggedPiece) {
@@ -947,24 +774,19 @@
             const touch = e.touches[0];
             const target = e.target;
             
-            // Remove any existing clones first to prevent duplicates
             document.querySelectorAll('.piece-dragging').forEach(el => el.remove());
             
-            // Create a clone with improved positioning
             const clone = target.cloneNode(true);
             clone.classList.add('piece-dragging');
             document.body.appendChild(clone);
             
-            // Get accurate position information
             const rect = target.getBoundingClientRect();
             draggedPiece = target;
             draggedPieceIndex = pieceIndex;
             
-            // Set offsets to center of piece for better accuracy
             draggedPieceOffsetX = rect.width / 2;
             draggedPieceOffsetY = rect.height / 2;
             
-            // Position the clone centered at touch point
             clone.style.left = `${touch.clientX}px`;
             clone.style.top = `${touch.clientY}px`;
             
@@ -973,7 +795,6 @@
                 gameState.white_options[pieceIndex] : 
                 gameState.black_options[pieceIndex];
                 
-            // Show valid move indicators
             const castleMoves = gameState.valid_moves.filter(vm => 
                 Array.isArray(vm) && vm.length > 2 && typeof vm[2] === 'string' && vm[2].includes('castle')
             );
@@ -988,7 +809,6 @@
                 if (square) {
                     square.classList.add('valid-drop-target');
                     
-                    // Check if this is a castling move
                     const row = Math.floor(index / 8);
                     const col = index % 8;
                     const isCastleMove = castleMoves.some(move => 
@@ -1001,7 +821,6 @@
                 }
             });
             
-            // Add all necessary event listeners
             document.addEventListener('touchmove', handleTouchMove, { passive: false });
             document.addEventListener('touchend', handleTouchEnd, { once: true });
             document.addEventListener('touchcancel', cleanupTouch, { once: true });
@@ -1009,28 +828,24 @@
     }
 
     function handleTouchMove(e) {
-        e.preventDefault(); // This is critical for drag operations
+        e.preventDefault();
         if (!draggedPiece) return;
         
         const touch = e.touches[0];
         const clone = document.querySelector('.piece-dragging');
         if (clone) {
-            // Position the clone at the center of the touch point
             clone.style.left = `${touch.clientX - draggedPieceOffsetX}px`;
             clone.style.top = `${touch.clientY - draggedPieceOffsetY}px`;
             
-            // Highlight the square under the touch
             const elementsAtPoint = document.elementsFromPoint(touch.clientX, touch.clientY);
             const squareUnderTouch = elementsAtPoint.find(el => el.classList.contains('square'));
             
-            // Remove hover class from all squares
             document.querySelectorAll('.square.drag-over').forEach(sq => {
                 if (sq !== squareUnderTouch) {
                     sq.classList.remove('drag-over');
                 }
             });
             
-            // Add hover class to the square under the touch
             if (squareUnderTouch) {
                 const squareIndex = parseInt(squareUnderTouch.dataset.index);
                 if (validDropTargets.includes(squareIndex)) {
@@ -1060,22 +875,18 @@
     }
 
     function cleanupTouch() {
-        // Remove the clone
         document.querySelectorAll('.piece-dragging').forEach(clone => clone.remove());
         
-        // Clean up all drag-related classes
         document.querySelectorAll('.valid-drop-target').forEach(square => {
             square.classList.remove('valid-drop-target');
             square.classList.remove('castle-move');
             square.classList.remove('drag-over');
         });
         
-        // Remove event listeners
         document.removeEventListener('touchmove', handleTouchMove);
         document.removeEventListener('touchend', handleTouchEnd);
         document.removeEventListener('touchcancel', cleanupTouch);
         
-        // Reset variables
         draggedPiece = null;
         draggedPieceIndex = -1;
         validDropTargets = [];
@@ -1110,7 +921,6 @@
             ? gameState.white_locations[pieceIndex] 
             : gameState.black_locations[pieceIndex];
         
-        // Create the move request payload
         const moveData = {
             piece_index: pieceIndex,
             move: move,
@@ -1132,10 +942,8 @@
                 handlePromotion(gameState.promotion.color, gameState.promotion.index);
             } else {
                 updateBoard();
-                // Check if AI needs to make a move
                 if (playingVsAI && !gameState.game_over && gameState.turn_step % 2 === 1) {
                     console.log("Requesting AI move...");
-                    // Add a slight delay so the player can see what happened
                     setTimeout(() => {
                         requestAIMove();
                     }, 500);
@@ -1146,7 +954,6 @@
     }
 
     function requestAIMove() {
-        // Add a "thinking" indicator
         turnDisplay.textContent = "AI is thinking...";
         
         fetch('/ai_move', {
@@ -1162,7 +969,6 @@
         .then(data => {
             gameState = data;
             if (gameState.promotion) {
-                // Auto select queen for AI promotion
                 fetch('/promote', {
                     method: 'POST',
                     headers: {
@@ -1190,39 +996,42 @@
     }
 
     function playVsAI() {
-        // Start a new game with white and activate AI mode
-        playingVsAI = true;
+        if (!playingVsAI) {
+            playingVsAI = true;
+            document.getElementById('ai-btn').textContent = "Play vs Player";
+            document.getElementById('ai-btn').style.backgroundColor = "#D4AF37"; // Darker gold color
+        } else {
+            playingVsAI = false;
+            document.getElementById('ai-btn').textContent = "Play vs AI";
+            document.getElementById('ai-btn').style.backgroundColor = "#5cb85c";
+        }
         fetch('/restart', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                vsAI: true,
-                aiColor: 'black'
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ vsAI: playingVsAI, aiColor: 'black' })
         })
         .then(response => response.json())
         .then(data => {
-            console.log("AI Game started:", data);
-            gameState = data;
-            if (!Array.isArray(gameState.valid_moves)) {
-                gameState.valid_moves = [];
-            }
-            gameState.selection = 100;
-            clearMoveArrow();
-            updateBoard();
-            document.getElementById('ai-btn').textContent = "Playing vs AI";
-            // Update display to show playing against AI
-            turnDisplay.textContent = `Current Turn: WHITE (You) - Playing vs AI`;
+             console.log("Restart data received:", data);
+             gameState = data;
+             if (!Array.isArray(gameState.valid_moves)) {
+                 gameState.valid_moves = [];
+             }
+             gameState.selection = 100;
+             clearMoveArrow();
+             updateBoard();
+             if (playingVsAI) {
+                 turnDisplay.textContent = "Current Turn: WHITE (You) - Playing vs AI";
+             } else {
+                 turnDisplay.textContent = "Current Turn: WHITE";
+             }
         })
         .catch(error => {
-            console.error('Error starting AI game:', error);
+             console.error('Error restarting game:', error);
         });
     }
 
     window.onload = () => {
-        // Apply initial CSS positioning
         const gameInfo = document.getElementById('game-info');
         const buttonContainer = document.querySelector('.button-container');
         const capturedInfo = document.getElementById('captured-white').parentElement;
