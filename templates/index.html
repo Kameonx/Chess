@@ -317,6 +317,34 @@
             transform: none; 
             box-shadow: 0 0 10px rgba(0,0,0,0.5);
         }
+        .selected-square {
+            box-shadow: inset 0 0 0 4px rgba(255, 255, 0, 0.8) !important;
+            background-color: rgba(255, 215, 0, 0.3) !important;
+            z-index: 1;
+        }
+        #ai-difficulty-container {
+            display: flex;
+            flex-direction: row;
+            gap: 5px;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        #ai-difficulty-container button {
+            flex: 1;
+            background-color: #D4AF37;
+            color: white;
+            padding: 8px 0;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #ai-difficulty-container button:hover {
+            background-color: #C5A028;
+        }
     </style>
 </head>
 <body>
@@ -391,30 +419,36 @@
         wrapper.appendChild(moveArrow);
     }
 
-    function createOutsideLabels() {
-        document.querySelectorAll('.outside-label').forEach(el => el.remove());
-        const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-        const wrapper = document.getElementById('chessboard-wrapper');
-        const squareSize = document.querySelector('.square').offsetWidth;
-        
-        for (let i = 0; i < 8; i++) {
-            const label = document.createElement('div');
-            label.classList.add('outside-label', 'column-label', 'bottom-label');
-            label.textContent = files[i];
-            label.style.left = `${25 + i * squareSize + squareSize / 2 - 50}px`; // Center horizontally
-            label.style.bottom = '5px';
-            wrapper.appendChild(label);
-        }
-        
-        for (let i = 0; i < 8; i++) {
-            const label = document.createElement('div');
-            label.classList.add('outside-label', 'row-label', 'left-label');
-            label.textContent = i + 1;
-            label.style.left = '5px';
-            label.style.top = `${25 + (7 - i) * squareSize + squareSize / 2 - 50}px`; // Center vertically
-            wrapper.appendChild(label);
-        }
+// Update the createOutsideLabels function to center labels properly
+function createOutsideLabels() {
+    // Remove any existing outside labels
+    document.querySelectorAll('.outside-label').forEach(el => el.remove());
+    const files = ['a','b','c','d','e','f','g','h'];
+    const wrapper = document.getElementById('chessboard-wrapper');
+    const squareSize = document.querySelector('.square').offsetWidth;
+    
+    // Create column labels along the bottom (files a-h left-to-right)
+    for (let i = 0; i < 8; i++) {
+        const label = document.createElement('div');
+        label.classList.add('outside-label', 'column-label');
+        label.textContent = files[i];
+        // Position centered both horizontally and vertically
+        label.style.left = `${25 + i * squareSize + squareSize/2 - 8}px`; // Center horizontally
+        label.style.bottom = '2px'; // Align closer to the board
+        wrapper.appendChild(label);
     }
+    
+    // Create row labels along the left (ranks 1-8 bottom-to-top)
+    for (let i = 0; i < 8; i++) {
+        const label = document.createElement('div');
+        label.classList.add('outside-label', 'row-label');
+        label.textContent = (8 - i).toString(); // 8 at top (i=0), 1 at bottom (i=7)
+        label.style.left = '5px';
+        // Position centered vertically relative to the square
+        label.style.top = `${25 + i * squareSize + squareSize/2 - 8}px`; // Center vertically
+        wrapper.appendChild(label);
+    }
+}
 
     function updateGridButtonText() {
         const btn = document.getElementById('toggle-grid-btn');
@@ -525,121 +559,103 @@
         });
     }
 
-    function updateBoard() {
-        const squares = document.querySelectorAll('.square');
-        squares.forEach(square => {
-            square.innerHTML = '';
-            square.classList.remove('last-move-from', 'last-move-to');
-            square.classList.remove('valid-move', 'castle-move');
-        });
-        const outsideLabels = document.querySelectorAll('.outside-label');
-        outsideLabels.forEach(label => {
-            label.style.display = (gridLabelMode === 0 || gridLabelMode === 1) ? 'block' : 'none';
-        });
-        squares.forEach(square => {
-            const index = parseInt(square.dataset.index);
-            const row = Math.floor(index / 8);
-            const col = index % 8;
-            const whiteIndex = gameState.white_locations.findIndex(loc => loc[0] === col && loc[1] === row);
-            const blackIndex = gameState.black_locations.findIndex(loc => loc[0] === col && loc[1] === row);
-            if (whiteIndex !== -1) {
-                const piece = gameState.white_pieces[whiteIndex];
-                if (piece) {
-                    const img = document.createElement('img');
-                    img.src = `/images/Chess_${piece === 'knight' ? 'n' : piece[0]}lt60.png`;
-                    img.classList.add('piece-image');
-                    img.draggable = true;
-                    img.dataset.pieceIndex = whiteIndex;
-                    img.dataset.pieceColor = 'white';
-                    img.addEventListener('dragstart', (e) => handleDragStart(e, whiteIndex, 'white'));
-                    square.appendChild(img);
-                }
-            } else if (blackIndex !== -1) {
-                const piece = gameState.black_pieces[blackIndex];
-                if (piece) {
-                    const img = document.createElement('img');
-                    img.src = `/images/Chess_${piece === 'knight' ? 'n' : piece[0]}dt60.png`;
-                    img.classList.add('piece-image');
-                    img.draggable = true;
-                    img.dataset.pieceIndex = blackIndex;
-                    img.dataset.pieceColor = 'black';
-                    img.addEventListener('dragstart', (e) => handleDragStart(e, blackIndex, 'black'));
-                    square.appendChild(img);
-                }
+// Update the updateBoard function to fix inside grid labels
+function updateBoard() {
+    const squares = document.querySelectorAll('.square');
+    squares.forEach(square => {
+        square.innerHTML = '';
+        square.classList.remove('last-move-from', 'last-move-to', 'valid-move', 'castle-move');
+    });
+    const outsideLabels = document.querySelectorAll('.outside-label');
+    outsideLabels.forEach(label => {
+        label.style.display = (gridLabelMode === 0 || gridLabelMode === 1) ? 'block' : 'none';
+    });
+    squares.forEach(square => {
+        const index = parseInt(square.dataset.index);
+        let row = Math.floor(index / 8);
+        let col = index % 8;
+
+        const whiteIndex = gameState.white_locations.findIndex(loc => loc[0] === col && loc[1] === row);
+        const blackIndex = gameState.black_locations.findIndex(loc => loc[0] === col && loc[1] === row);
+        if (whiteIndex !== -1) {
+            const piece = gameState.white_pieces[whiteIndex];
+            if (piece) {
+                const img = document.createElement('img');
+                img.src = `/images/Chess_${piece === 'knight' ? 'n' : piece[0]}lt60.png`;
+                img.classList.add('piece-image');
+                img.draggable = true;
+                img.dataset.pieceIndex = whiteIndex;
+                img.dataset.pieceColor = 'white';
+                img.addEventListener('dragstart', (e) => handleDragStart(e, whiteIndex, 'white'));
+                square.appendChild(img);
             }
-            if (gameState.last_move) {
-                const [fromCol, fromRow] = gameState.last_move.from;
-                const [toCol, toRow] = gameState.last_move.to;
-                if (col === fromCol && row === fromRow) {
-                    square.classList.add('last-move-from');
-                }
-                if (col === toCol && row === toRow) {
-                    square.classList.add('last-move-to');
-                }
+        } else if (blackIndex !== -1) {
+            const piece = gameState.black_pieces[blackIndex];
+            if (piece) {
+                const img = document.createElement('img');
+                img.src = `/images/Chess_${piece === 'knight' ? 'n' : piece[0]}dt60.png`;
+                img.classList.add('piece-image');
+                img.draggable = true;
+                img.dataset.pieceIndex = blackIndex;
+                img.dataset.pieceColor = 'black';
+                img.addEventListener('dragstart', (e) => handleDragStart(e, blackIndex, 'black'));
+                square.appendChild(img);
             }
-            if (gridLabelMode === 0 || gridLabelMode === 2) {
-                const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-                const rowLabel = Math.floor(index / 8) + 1;
-                const colLabel = files[index % 8];
-                const topLeftLabel = document.createElement('div');
-                topLeftLabel.classList.add('grid-label', 'top-left');
-                topLeftLabel.textContent = `${colLabel}${rowLabel}`;
-                square.appendChild(topLeftLabel);
-            }
-        });
-        if (gameState.valid_moves) {
-            gameState.valid_moves.forEach(move => {
-                if (Array.isArray(move) && move.length >= 2) {
-                    const [col, row] = move;
-                    const index = row * 8 + col;
-                    const square = document.querySelector(`.square[data-index="${index}"]`);
-                    
-                    if (square) {
-                        square.classList.add('valid-move');
-                        
-                        if (move.length > 2 && typeof move[2] === 'string' && move[2].includes('castle')) {
-                            square.classList.add('castle-move');
-                        }
-                    }
-                }
-            });
         }
         if (gameState.last_move) {
-            setTimeout(() => {
-                drawMoveArrow(gameState.last_move.from, gameState.last_move.to);
-                // Log to confirm the arrow is being drawn
-                console.log("Drawing arrow from", gameState.last_move.from, "to", gameState.last_move.to);
-            }, 100);
-        } else {
-            clearMoveArrow();
+            const [fromCol, fromRow] = gameState.last_move.from;
+            const [toCol, toRow] = gameState.last_move.to;
+            if (col === fromCol && row === fromRow) { square.classList.add('last-move-from'); }
+            if (col === toCol && row === toRow) { square.classList.add('last-move-to'); }
         }
-        
-        updateCapturedPieces(capturedWhite, gameState.captured_pieces_white, 'white');
-        updateCapturedPieces(capturedBlack, gameState.captured_pieces_black, 'black');
-        const turnColor = gameState.turn_step % 2 === 0 ? 'WHITE' : 'BLACK';
-        if (playingVsAI) {
-            const playerTurnText = gameState.turn_step % 2 === 0 ? 'WHITE (You)' : 'BLACK (AI)';
-            turnDisplay.textContent = `Current Turn: ${playerTurnText} - Playing vs AI`;
-        } else {
-            turnDisplay.textContent = `Current Turn: ${turnColor}`;
-        }
-        if (gameState.game_over) {
-            checkDisplay.textContent = `${gameState.winner.toUpperCase()} WINS BY CAPTURING THE KING!`;
-            checkDisplay.className = 'check-indicator checkmate-notification';
-            board.style.pointerEvents = 'none';
-        } else if (gameState.checkmate) {
-            const inCheck = gameState.check.toUpperCase();
-            checkDisplay.textContent = `CHECKMATE! ${inCheck} king can be captured!`;
-            checkDisplay.className = 'check-indicator checkmate-notification';
-        } else if (gameState.check) {
-            checkDisplay.textContent = `${gameState.check.toUpperCase()} IS IN CHECK!`;
-            checkDisplay.className = 'check-indicator check-notification';
-        } else {
-            checkDisplay.textContent = '';
-            checkDisplay.className = 'check-indicator';
-        }
+    });
+    if (gameState.valid_moves) {
+        gameState.valid_moves.forEach(move => {
+            if (Array.isArray(move) && move.length >= 2) {
+                const [col, row] = move;
+                const index = row * 8 + col;
+                const square = document.querySelector(`.square[data-index="${index}"]`);
+                if (square) {
+                    square.classList.add('valid-move');
+                    if (move.length > 2 && typeof move[2] === 'string' && move[2].includes('castle')) {
+                        square.classList.add('castle-move');
+                    }
+                }
+            }
+        });
     }
-    
+    if (gameState.last_move) {
+        setTimeout(() => {
+            drawMoveArrow(gameState.last_move.from, gameState.last_move.to);
+            console.log("Drawing arrow from", gameState.last_move.from, "to", gameState.last_move.to);
+        }, 100);
+    } else { clearMoveArrow(); }
+    updateCapturedPieces(capturedWhite, gameState.captured_pieces_white, 'white');
+    updateCapturedPieces(capturedBlack, gameState.captured_pieces_black, 'black');
+    const turnColor = gameState.turn_step % 2 === 0 ? 'WHITE' : 'BLACK';
+    if (playingVsAI) {
+        const playerTurnText = gameState.turn_step % 2 === 0 ? 'WHITE (You)' : 'BLACK (AI)';
+        const difficulty = gameState.difficulty || 'Easy';
+        const displayDifficulty = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+        turnDisplay.textContent = `Current Turn: ${playerTurnText} - Playing vs AI (${displayDifficulty})`;
+    } else { turnDisplay.textContent = `Current Turn: ${turnColor}`; }
+    if (gameState.game_over) {
+        checkDisplay.textContent = `${gameState.winner.toUpperCase()} WINS BY CAPTURING THE KING!`;
+        checkDisplay.className = 'check-indicator checkmate-notification';
+        board.style.pointerEvents = 'none';
+    } else if (gameState.checkmate) {
+        const inCheck = gameState.check.toUpperCase();
+        checkDisplay.textContent = `CHECKMATE! ${inCheck} king can be captured!`;
+        checkDisplay.className = 'check-indicator checkmate-notification';
+    } else if (gameState.check) {
+        checkDisplay.textContent = `${gameState.check.toUpperCase()} IS IN CHECK!`;
+        checkDisplay.className = 'check-indicator check-notification';
+    } else {
+        checkDisplay.textContent = '';
+        checkDisplay.className = 'check-indicator';
+    }
+}
+
     function updateCapturedPieces(container, capturedPieces, opponentColor) {
         container.innerHTML = '';
         
@@ -650,7 +666,7 @@
         const pieceCount = {};
         capturedPieces.forEach(piece => {
             if (!pieceCount[piece]) {
-                pieceCount[piece] = 0;
+                pieceCount[piece]++;
             }
             pieceCount[piece]++;
         });
@@ -771,28 +787,41 @@
         }
     });
 
-    function restartGame() {
-        board.style.pointerEvents = 'auto';
-        fetch('/restart', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ vsAI: playingVsAI, aiColor: 'black' })
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log("Restart data received:", data);
-            gameState = data;
-            if (!Array.isArray(gameState.valid_moves)) {
-                gameState.valid_moves = [];
-            }
-            gameState.selection = 100;
-            clearMoveArrow();
-            updateBoard();
-        })
-        .catch(error => {
-            console.error('Error restarting game:', error);
-        });
+// Update the restartGame function to include the current difficulty
+function restartGame() {
+    board.style.pointerEvents = 'auto';
+    
+    // Create the restart data with the current difficulty if playing against AI
+    const restartData = { 
+        vsAI: playingVsAI, 
+        aiColor: 'black'
+    };
+    
+    // Preserve the current difficulty setting when restarting
+    if (playingVsAI && gameState && gameState.difficulty) {
+        restartData.difficulty = gameState.difficulty;
     }
+    
+    fetch('/restart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(restartData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log("Restart data received:", data);
+        gameState = data;
+        if (!Array.isArray(gameState.valid_moves)) {
+            gameState.valid_moves = [];
+        }
+        gameState.selection = 100;
+        clearMoveArrow();
+        updateBoard();
+    })
+    .catch(error => {
+        console.error('Error restarting game:', error);
+    });
+}
 
     function toggleSound() {
         if (backgroundMusic.muted) {
@@ -995,41 +1024,81 @@
         });
     }
 
-    function playVsAI() {
-        if (!playingVsAI) {
-            playingVsAI = true;
-            document.getElementById('ai-btn').textContent = "Play vs Player";
-            document.getElementById('ai-btn').style.backgroundColor = "#D4AF37"; // Darker gold color
-        } else {
+// Fix the playVsAI function to properly initialize the chess_ai variable
+function playVsAI() {
+    if (!playingVsAI) {
+        playingVsAI = true;
+
+        // Hide main AI button and create difficulty buttons
+        document.getElementById('ai-btn').style.display = 'none';
+        let aiContainer = document.createElement('div');
+        aiContainer.id = 'ai-difficulty-container';
+
+        let pvpButton = document.createElement('button');
+        pvpButton.textContent = 'PvP';
+        pvpButton.onclick = function () {
             playingVsAI = false;
-            document.getElementById('ai-btn').textContent = "Play vs AI";
-            document.getElementById('ai-btn').style.backgroundColor = "#5cb85c";
-        }
-        fetch('/restart', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ vsAI: playingVsAI, aiColor: 'black' })
-        })
+            removeDifficultyButtons();
+            document.getElementById('ai-btn').style.display = 'block';
+            // Restart in PvP mode
+            fetch('/restart', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ vsAI: false })
+            }).then(response => response.json())
+                .then(data => {
+                    gameState = data;
+                    updateBoard();
+                });
+        };
+
+        let easyBtn = document.createElement('button');
+        easyBtn.textContent = 'Easy';
+        easyBtn.onclick = function () { setAIDifficulty('easy'); };
+
+        let mediumBtn = document.createElement('button');
+        mediumBtn.textContent = 'Medium';
+        mediumBtn.onclick = function () { setAIDifficulty('medium'); };
+
+        let hardBtn = document.createElement('button');
+        hardBtn.textContent = 'Hard';
+        hardBtn.onclick = function () { setAIDifficulty('hard'); };
+
+        aiContainer.appendChild(pvpButton);
+        aiContainer.appendChild(easyBtn);
+        aiContainer.appendChild(mediumBtn);
+        aiContainer.appendChild(hardBtn);
+
+        // Insert above the Toggle Grid Labels button
+        let container = document.querySelector('.button-container');
+        let gridBtn = document.getElementById('toggle-grid-btn');
+        container.insertBefore(aiContainer, gridBtn);
+
+        // Immediately start game with Easy difficulty
+        setAIDifficulty('easy');
+    }
+}
+
+function removeDifficultyButtons() {
+    let aiContainer = document.getElementById('ai-difficulty-container');
+    if (aiContainer) aiContainer.remove();
+}
+
+// Fix the setAIDifficulty function to not reference the undefined chess_ai
+function setAIDifficulty(difficulty) {
+    fetch('/restart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vsAI: true, aiColor: 'black', difficulty: difficulty })
+    })
         .then(response => response.json())
         .then(data => {
-             console.log("Restart data received:", data);
-             gameState = data;
-             if (!Array.isArray(gameState.valid_moves)) {
-                 gameState.valid_moves = [];
-             }
-             gameState.selection = 100;
-             clearMoveArrow();
-             updateBoard();
-             if (playingVsAI) {
-                 turnDisplay.textContent = "Current Turn: WHITE (You) - Playing vs AI";
-             } else {
-                 turnDisplay.textContent = "Current Turn: WHITE";
-             }
-        })
-        .catch(error => {
-             console.error('Error restarting game:', error);
+            gameState = data;
+            updateBoard();
+            let displayDifficulty = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+            turnDisplay.textContent = `Current Turn: WHITE (You) - Playing vs AI (${displayDifficulty})`;
         });
-    }
+}
 
     window.onload = () => {
         const gameInfo = document.getElementById('game-info');
@@ -1069,8 +1138,28 @@
         document.querySelectorAll('.square.castle-move').forEach(square => {
             square.classList.remove('castle-move');
         });
+        document.querySelectorAll('.square.selected-square').forEach(square => {
+            square.classList.remove('selected-square');
+        });
         
-        // Now apply the highlights
+        // Highlight the selected piece's square
+        if (gameState.selection !== 100) {
+            const color = gameState.turn_step % 2 === 0 ? 'white' : 'black';
+            const position = color === 'white' ? 
+                gameState.white_locations[gameState.selection] : 
+                gameState.black_locations[gameState.selection];
+            
+            if (position && Array.isArray(position) && position.length === 2) {
+                const [col, row] = position;
+                const squareIndex = row * 8 + col;
+                const selectedSquare = document.querySelector(`.square[data-index="${squareIndex}"]`);
+                if (selectedSquare) {
+                    selectedSquare.classList.add('selected-square');
+                }
+            }
+        }
+        
+        // Now apply the highlights for valid moves
         gameState.valid_moves.forEach(move => {
             if (Array.isArray(move) && move.length >= 2) {
                 const [col, row] = move;
@@ -1105,6 +1194,9 @@
         });
         document.querySelectorAll('.square.drag-over').forEach(square => {
             square.classList.remove('drag-over');
+        });
+        document.querySelectorAll('.square.selected-square').forEach(square => {
+            square.classList.remove('selected-square');
         });
     }
 
@@ -1432,6 +1524,45 @@
         }
     }`;
     document.head.appendChild(styleSheet);
+
+    // Also add CSS improvements for outside labels to center them better
+    const styleSheet2 = document.createElement('style');
+    styleSheet2.innerHTML = `
+    .outside-label {
+        position: absolute;
+        font-size: 16px;
+        color: rgba(180, 180, 180, 0.9);
+        text-align: center;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .column-label { 
+        width: 20px;  /* Reduced width for better centering */
+    }
+    .row-label { 
+        width: 20px;
+        height: 20px; /* Fixed height for better vertical centering */
+        line-height: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    /* ...existing styles... */
+    `;
+    document.head.appendChild(styleSheet2);
+
+// Add CSS improvements for button heights
+const styleSheet3 = document.createElement('style');
+styleSheet3.innerHTML = `
+    #ai-difficulty-container button {
+        height: 40px; /* Match the height of the Play vs AI button */
+    }
+    #ai-difficulty-container {
+        margin-bottom: 0; /* Remove the bottom margin to avoid shifting */
+    }
+`;
+document.head.appendChild(styleSheet3);
     </script>
 </body>
 </html>
