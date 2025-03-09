@@ -34,6 +34,7 @@
             grid-template-rows: repeat(8, 100px);
             touch-action: zoom-in;
             position: relative;
+            transform: rotate(180deg); /* Rotate the entire board */
         }
         
         .square {
@@ -42,6 +43,7 @@
             align-items: center;
             cursor: pointer;
             position: relative;
+            transform: rotate(180deg); /* Rotate each square back to normal */
         }
         
         .white { background-color: #f0d9b5; }
@@ -231,6 +233,7 @@
             position: absolute;
             pointer-events: none;
             z-index: 5;
+            transform: rotate(180deg); /* Rotate the arrow container */
         }
         
         #move-arrow svg {
@@ -241,7 +244,7 @@
         
         @media (max-width: 600px) {
             #move-arrow {
-                transform: scale(0.5);
+                transform: scale(0.5) rotate(180deg); /* Rotate the arrow container */
                 transform-origin: top left;
             }
         }
@@ -374,22 +377,22 @@
         const wrapper = document.getElementById('chessboard-wrapper');
         const squareSize = document.querySelector('.square').offsetWidth;
         
-        // Create bottom column labels (a-h)
+        // Create top column labels (a-h)
         for (let i = 0; i < 8; i++) {
             const label = document.createElement('div');
-            label.classList.add('outside-label', 'column-label', 'bottom-label');
+            label.classList.add('outside-label', 'column-label', 'top-label');
             label.textContent = files[i];
             label.style.left = `${25 + i * squareSize + squareSize/2 - 10}px`;
-            label.style.bottom = '5px';
+            label.style.top = '5px';
             wrapper.appendChild(label);
         }
         
-        // Create left row labels (1-8)
+        // Create right row labels (1-8)
         for (let i = 0; i < 8; i++) {
             const label = document.createElement('div');
-            label.classList.add('outside-label', 'row-label', 'left-label');
-            label.textContent = 8 - i;
-            label.style.left = '5px';
+            label.classList.add('outside-label', 'row-label', 'right-label');
+            label.textContent = 8 - i;  // This shows row 8 at the top and row 1 at the bottom
+            label.style.right = '5px';
             label.style.top = `${25 + i * squareSize + squareSize/2 - 10}px`;
             wrapper.appendChild(label);
         }
@@ -549,7 +552,7 @@
             }
             if (gridLabelMode === 0 || gridLabelMode === 2) {
                 const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-                const rowLabel = 8 - Math.floor(index / 8);
+                const rowLabel = 8 - Math.floor(index / 8);  // This shows row 8 at the top
                 const colLabel = files[index % 8];
                 const topLeftLabel = document.createElement('div');
                 topLeftLabel.classList.add('grid-label', 'top-left');
