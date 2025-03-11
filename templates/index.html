@@ -387,6 +387,7 @@
     let playingVsAI = false;
     let gameState = null;
     let draggedPieceRect = null;  // NEW global variable to store the piece's bounding rectangle
+    let aiThinking = false; // Add a new global variable to track when AI is thinking
 
     function createBoard() {
         let wrapper = document.getElementById('chessboard-wrapper');
@@ -632,24 +633,36 @@ function updateBoard() {
     } else { clearMoveArrow(); }
     updateCapturedPieces(capturedWhite, gameState.captured_pieces_white, 'white');
     updateCapturedPieces(capturedBlack, gameState.captured_pieces_black, 'black');
-    const turnColor = gameState.turn_step % 2 === 0 ? 'WHITE' : 'BLACK';
-    if (playingVsAI) {
-        const playerTurnText = gameState.turn_step % 2 === 0 ? 'WHITE (You)' : 'BLACK (AI)';
-        const difficulty = gameState.difficulty || 'Easy';
-        const displayDifficulty = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
-        turnDisplay.textContent = `Current Turn: ${playerTurnText} - Playing vs AI (${displayDifficulty})`;
-    } else { turnDisplay.textContent = `Current Turn: ${turnColor}`; }
-    if (gameState.game_over) {
-        checkDisplay.textContent = `${gameState.winner.toUpperCase()} WINS BY CAPTURING THE KING!`;
-        checkDisplay.className = 'check-indicator checkmate-notification';
-        board.style.pointerEvents = 'none';
-    } else if (gameState.checkmate) {
-        const inCheck = gameState.check.toUpperCase();
-        checkDisplay.textContent = `CHECKMATE! ${inCheck} king can be captured!`;
-        checkDisplay.className = 'check-indicator checkmate-notification';
-    } else if (gameState.check) {
-        checkDisplay.textContent = `${gameState.check.toUpperCase()} IS IN CHECK!`;
-        checkDisplay.className = 'check-indicator check-notification';
+    
+    // Only update turn display if AI is not currently thinking
+    if (!aiThinking) {
+        const turnColor = gameState.turn_step % 2 === 0 ? 'WHITE' : 'BLACK';
+        
+        // Check for game over first and show appropriate message
+        if (gameState.game_over) {
+            const winner = gameState.winner ? gameState.winner.toUpperCase() : 
+                          (gameState.turn_step % 2 === 1 ? 'WHITE' : 'BLACK');
+            turnDisplay.textContent = `GAME OVER - ${winner} WINS!`;
+            turnDisplay.style.color = "#FF0000";
+            turnDisplay.style.fontWeight = "bold";
+        } else if (playingVsAI) {
+            // Always display difficulty level, regardless of whose turn it is
+            const playerTurnText = gameState.turn_step % 2 === 0 ? 'WHITE (You)' : 'BLACK (AI)';
+            const difficulty = gameState.difficulty || 'easy';
+            // Make sure the difficulty is capitalized correctly
+            const displayDifficulty = difficulty.charAt(0).toUpperCase() + difficulty.slice(1).toLowerCase();
+            turnDisplay.textContent = `Current Turn: ${playerTurnText} - Playing vs AI (${displayDifficulty})`;
+        } else { 
+            turnDisplay.textContent = `Current Turn: ${turnColor}`; 
+            turnDisplay.style.color = "";
+            turnDisplay.style.fontWeight = "";
+        }
+    }
+    
+    // Display notification message if available
+    if (gameState.notification && gameState.notification.message) {
+        checkDisplay.textContent = gameState.notification.message;
+        checkDisplay.className = 'check-indicator ' + gameState.notification.class;
     } else {
         checkDisplay.textContent = '';
         checkDisplay.className = 'check-indicator';
@@ -973,9 +986,10 @@ function restartGame() {
                 updateBoard();
                 if (playingVsAI && !gameState.game_over && gameState.turn_step % 2 === 1) {
                     console.log("Requesting AI move...");
+                    // Set a small timeout to ensure the board updates first
                     setTimeout(() => {
                         requestAIMove();
-                    }, 500);
+                    }, 100);
                 }
             }
         })
@@ -983,7 +997,12 @@ function restartGame() {
     }
 
     function requestAIMove() {
-        turnDisplay.textContent = "AI is thinking...";
+        aiThinking = true; // Set flag that AI is thinking
+        
+        // Change the message to indicate AI is thinking and include difficulty
+        const difficulty = gameState.difficulty || 'easy';
+        const displayDifficulty = difficulty.charAt(0).toUpperCase() + difficulty.slice(1).toLowerCase();
+        turnDisplay.textContent = `AI is thinking... (${displayDifficulty})`;
         
         fetch('/ai_move', {
             method: 'POST',
@@ -997,6 +1016,8 @@ function restartGame() {
         .then(response => response.json())
         .then(data => {
             gameState = data;
+            aiThinking = false; // AI is done thinking
+            
             if (gameState.promotion) {
                 fetch('/promote', {
                     method: 'POST',
@@ -1020,7 +1041,10 @@ function restartGame() {
         })
         .catch(error => {
             console.error('Error getting AI move:', error);
-            turnDisplay.textContent = `Current Turn: BLACK (AI)`;
+            aiThinking = false; // Reset thinking flag on error
+            const difficulty = gameState.difficulty || 'easy';
+            const displayDifficulty = difficulty.charAt(0).toUpperCase() + difficulty.slice(1).toLowerCase();
+            turnDisplay.textContent = `Current Turn: BLACK (AI) - Difficulty: ${displayDifficulty}`;
         });
     }
 
