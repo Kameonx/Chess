@@ -491,6 +491,9 @@ def make_move():
         if enemies_pieces[captured_index] == 'king':
             state['game_over'] = True
             state['winner'] = 'white' if state['turn_step'] % 2 == 0 else 'black'
+            # Force more prominent notification
+            check_val = 'checkmate'
+            checkmate_state = True
     
     # Update piece location
     locations[piece_index] = move
@@ -563,7 +566,15 @@ def make_move():
     state['turn_step'] += 1
     state['selection'] = 100
     state['valid_moves'] = []
-    notification = getNotification(check_val, state['game_over'], state['turn_step'], checkmate_state)
+    
+    # For game-over conditions, make notification more urgent
+    if state['game_over']:
+        notification = {
+            "message": f"{state['winner'].upper()} WINS BY CAPTURING THE KING!", 
+            "class": "checkmate-notification"
+        }
+    else:
+        notification = getNotification(check_val, state['game_over'], state['turn_step'], checkmate_state)
     
     # Include vs_ai flag in response
     state['vs_ai'] = vs_ai
@@ -750,6 +761,10 @@ def restart_game():
     
     # Update the chess_ai instance's difficulty
     chess_ai.difficulty = difficulty
+    
+    # Add time limits for better AI performance
+    if difficulty == 'hard':
+        chess_ai.time_limits['hard'] = 5.0  # Reduce from 15 to 5 seconds for faster play
     
     # Determine starting turn based on previous winner or AI settings
     starting_turn = 0  # Default to white first
