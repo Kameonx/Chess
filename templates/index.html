@@ -652,6 +652,8 @@ function updateBoard() {
             // Make sure the difficulty is capitalized correctly
             const displayDifficulty = difficulty.charAt(0).toUpperCase() + difficulty.slice(1).toLowerCase();
             turnDisplay.textContent = `Current Turn: ${playerTurnText} - Playing vs AI (${displayDifficulty})`;
+            turnDisplay.style.color = ""; // Reset color
+            turnDisplay.style.fontWeight = ""; // Reset font weight
         } else { 
             turnDisplay.textContent = `Current Turn: ${turnColor}`; 
             turnDisplay.style.color = "";
@@ -803,6 +805,13 @@ function updateBoard() {
 // Update the restartGame function to include the current difficulty
 function restartGame() {
     board.style.pointerEvents = 'auto';
+    
+    // Reset UI state first
+    turnDisplay.textContent = '';
+    turnDisplay.style.color = ''; // Reset color
+    turnDisplay.style.fontWeight = ''; // Reset font weight
+    checkDisplay.textContent = ''; 
+    checkDisplay.className = 'check-indicator';
     
     // Create the restart data with the current difficulty if playing against AI
     const restartData = { 
@@ -1004,6 +1013,15 @@ function restartGame() {
         const displayDifficulty = difficulty.charAt(0).toUpperCase() + difficulty.slice(1).toLowerCase();
         turnDisplay.textContent = `AI is thinking... (${displayDifficulty})`;
         
+        // Add a timeout to ensure we don't get stuck waiting forever
+        let aiTimeout = setTimeout(() => {
+            console.log("AI move request timed out!");
+            aiThinking = false;
+            turnDisplay.textContent = `AI move timed out. Please restart the game.`;
+            turnDisplay.style.color = "#FF0000";
+            addRestartButton();
+        }, 20000); // 20 seconds max wait time - increased from previous value
+        
         fetch('/ai_move', {
             method: 'POST',
             headers: {
@@ -1013,39 +1031,91 @@ function restartGame() {
                 game_state: gameState
             })
         })
-        .then(response => response.json())
+        .then(response => {
+            clearTimeout(aiTimeout); // Clear timeout as we got a response
+            
+            if (!response.ok && response.status >= 500) {
+                throw new Error(`Server error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
+            // Handle the case where AI couldn't find a move but returned a 200 status
+            if (data.error) {
+                console.log("AI move status:", data.error);
+                aiThinking = false;
+                turnDisplay.textContent = `AI couldn't find a move. Please restart the game.`;
+                turnDisplay.style.color = "#FF9900";  // Orange for warning, not error
+                addRestartButton();
+                return;
+            }
+            
+            // Debug logging
+            if (data.ai_debug) {
+                console.log("AI move details:", data.ai_debug);
+            }
+            
+            // Normal flow - update game state and continue
             gameState = data;
             aiThinking = false; // AI is done thinking
             
             if (gameState.promotion) {
-                fetch('/promote', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        color: gameState.promotion.color,
-                        piece: 'queen',
-                        index: gameState.promotion.index
-                    })
-                })
-                .then(response => response.json())
-                .then(promotionData => {
-                    Object.assign(gameState, promotionData);
-                    updateBoard();
-                });
+                handleAIPromotion();
             } else {
                 updateBoard();
             }
         })
         .catch(error => {
+            clearTimeout(aiTimeout); // Clear timeout as we got an error response
             console.error('Error getting AI move:', error);
             aiThinking = false; // Reset thinking flag on error
-            const difficulty = gameState.difficulty || 'easy';
-            const displayDifficulty = difficulty.charAt(0).toUpperCase() + difficulty.slice(1).toLowerCase();
-            turnDisplay.textContent = `Current Turn: BLACK (AI) - Difficulty: ${displayDifficulty}`;
+            
+            // Provide clear feedback to the user
+            turnDisplay.textContent = `AI Error - Please restart game`;
+            turnDisplay.style.color = "#FF0000";
+            
+            // Add restart button directly
+            addRestartButton();
         });
+    }
+    
+    function handleAIPromotion() {
+        // AI always promotes to queen
+        fetch('/promote', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                color: gameState.promotion.color,
+                piece: 'queen',
+                index: gameState.promotion.index
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Promotion failed');
+            }
+            return response.json();
+        })
+        .then(promotionData => {
+            Object.assign(gameState, promotionData);
+            updateBoard();
+        })
+        .catch(err => {
+            console.error('Error promoting AI pawn:', err);
+            updateBoard(); // Still update board even if promotion fails
+        });
+    }
+    
+    function addRestartButton() {
+        // Add a restart button directly in the message for convenience
+        const restartLink = document.createElement('button');
+        restartLink.textContent = "Restart Game";
+        restartLink.style.marginLeft = "10px";
+        restartLink.style.padding = "5px 10px";
+        restartLink.addEventListener('click', restartGame);
+        turnDisplay.appendChild(restartLink);
     }
 
 // Fix the playVsAI function to properly initialize the chess_ai variable
