@@ -752,52 +752,47 @@ def reset_board():
 
 @app.route('/restart', methods=['POST'])
 def restart_game():
-    state = session.get('game_state', {})
     # Get request data if provided
     data = request.json or {}
     vs_ai = data.get('vsAI', False)
     ai_color = data.get('aiColor', 'black')  # Default AI plays black
     difficulty = data.get('difficulty', 'easy')  # Get AI difficulty
     
+    # Preserve previous winner before resetting
+    previous_winner = None
+    if 'game_state' in session:
+        state = session.get('game_state', {})
+        previous_winner = state.get('previous_winner')
+
+    # Completely reset the game state
+    init_game_state()
+    state = session['game_state']
+    
+    # Restore previous winner if available
+    if previous_winner:
+        state['previous_winner'] = previous_winner
+
     # Update the chess_ai instance's difficulty
     chess_ai.difficulty = difficulty
     
     # Add time limits for better AI performance
     if difficulty == 'hard':
-        chess_ai.time_limits['hard'] = 5.0  # Reduce from 15 to 5 seconds for faster play
-    
-    # Determine starting turn based on previous winner or AI settings
-    starting_turn = 0  # Default to white first
-    
-    # If there was a previous game with a winner, use that color to start
-    if state.get('previous_winner') == 'black' and not vs_ai:
-        starting_turn = 1
-    
-    # Initialize new game state with the determined starting turn
-    init_game_state(starting_turn)
-    state = session['game_state']
+        chess_ai.time_limits['hard'] = 5.0  # Reduced time for faster play
     
     # Set AI game flag if playing against AI
     state['vs_ai'] = vs_ai
     state['ai_color'] = ai_color
     state['difficulty'] = difficulty  # Store difficulty in game state
     
-    # Keep track of who won the previous game
-    if 'previous_winner' in session.get('game_state', {}):
-        state['previous_winner'] = session['game_state']['previous_winner']
-    
     # Calculate options for both sides after reset
     state['black_options'] = check_options(state['black_pieces'], state['black_locations'], 'black')
     state['white_options'] = check_options(state['white_pieces'], state['white_locations'], 'white')
     
-    # Set check status
-    current_check = ''
-    if is_check('white'):
-        current_check = 'white'
-    elif is_check('black'):
-        current_check = 'black'
+    # Ensure game_over and check are properly reset
+    state['game_over'] = False
+    state['check'] = ''
+    state['notification'] = {"message": "", "class": ""}
     
-    state['check'] = current_check
     session['game_state'] = state
     
     # Return complete state data including difficulty
@@ -815,13 +810,14 @@ def restart_game():
         'black_options': state['black_options'],
         'winner': state['winner'],
         'game_over': state['game_over'],
-        'check': current_check,
+        'check': '',
+        'notification': {"message": "", "class": ""},
         'white_moved': state['white_moved'],
         'black_moved': state['black_moved'],
         'checkmate': False,
         'vs_ai': vs_ai,
         'ai_color': ai_color,
-        'difficulty': difficulty,  # Add difficulty to response
+        'difficulty': difficulty,
         'last_move': None
     })
 
@@ -837,11 +833,109 @@ def ai_move():
     if state['turn_step'] % 2 != 1:
         return jsonify({'error': 'Not AI\'s turn'}), 400
     
-    # Get AI move
-    ai_move = chess_ai.get_move(state)
-    if not ai_move:
-        return jsonify({'error': 'AI could not find a valid move'}), 500
+    # Set a timeout for the AI to prevent hanging
+    import threading
+    import time
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError
     
+    # Function to get AI move with timeout protection
+    def get_ai_move_with_timeout():
+        try:
+            # Try with normal difficulty
+            difficulty = state.get('difficulty', 'medium')
+            chess_ai.difficulty = difficulty
+            
+            # Start with a timer
+            start_time = time.time()
+            
+            # Try to get a move
+            ai_move = chess_ai.get_move(state)
+            
+            # If we get a move, return it
+            if ai_move:
+                return ai_move
+                
+            # If no move found, fall back to medium difficulty
+            chess_ai.difficulty = 'medium'
+            ai_move = chess_ai.get_move(state)
+            
+            # If still no move, try easy mode
+            if not ai_move:
+                chess_ai.difficulty = 'easy'
+                ai_move = chess_ai.get_move(state)
+                
+            # If still nothing, get a random valid move as last resort
+            if not ai_move:
+                moves = chess_ai._get_all_valid_moves(state)
+                if moves:
+                    ai_move = random.choice(moves)
+                    
+            # Reset difficulty back to what was requested
+            chess_ai.difficulty = difficulty
+            
+            return ai_move
+            
+        except Exception as e:
+            print(f"Error in AI move calculation: {e}")
+            # Fall back to medium if there's an error
+            chess_ai.difficulty = 'medium'
+            try:
+                ai_move = chess_ai.get_move(state)
+                return ai_move
+            except:
+                # Last resort - try random move
+                moves = chess_ai._get_all_valid_moves(state)
+                if moves:
+                    return random.choice(moves)
+                return None
+    
+    # Execute with timeout
+    try:
+        # Different timeout based on difficulty
+        difficulty = state.get('difficulty', 'medium')
+        timeout_seconds = 10  # Default
+        if difficulty == 'easy':
+            timeout_seconds = 3
+        elif difficulty == 'medium':
+            timeout_seconds = 6
+        elif difficulty == 'hard':
+            timeout_seconds = 10
+            
+        with ThreadPoolExecutor() as executor:
+            future = executor.submit(get_ai_move_with_timeout)
+            ai_move = future.result(timeout=timeout_seconds)
+            
+            if not ai_move:
+                # If still no move, use absolute last resort - pick any valid move
+                moves = chess_ai._get_all_valid_moves(state)
+                if moves:
+                    ai_move = random.choice(moves)
+                else:
+                    # No valid moves - might be checkmate or stalemate
+                    return jsonify({'error': 'No valid moves available'}), 200
+    except TimeoutError:
+        # Timeout - fall back to simpler strategy
+        print("AI move calculation timed out, using fallback strategy")
+        chess_ai.difficulty = 'easy'  # Force easy mode
+        try:
+            ai_move = chess_ai.get_move(state)
+            if not ai_move:
+                # Last fallback - random move
+                moves = chess_ai._get_all_valid_moves(state)
+                if moves:
+                    ai_move = random.choice(moves)
+                else:
+                    return jsonify({'error': 'No valid moves available after timeout'}), 200
+        except:
+            return jsonify({'error': 'AI failed to calculate a move'}), 500
+        finally:
+            # Reset to original difficulty
+            chess_ai.difficulty = state.get('difficulty', 'medium')
+    
+    # Handle missing move case
+    if not ai_move:
+        return jsonify({'error': 'AI could not determine a valid move'}), 200
+        
     piece_index, move, from_pos = ai_move
     
     # Process the move (similar to the make_move function)
