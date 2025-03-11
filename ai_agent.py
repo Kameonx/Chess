@@ -884,46 +884,103 @@ class ChessAI:
         best_move = None
         best_score = float('-inf')
         
-        # Use higher depth for hard difficulty adjusted by board complexity
-        depth = 4
-        num_pieces = sum(1 for p in state['black_pieces'] if p is not None) + sum(1 for p in state['white_pieces'] if p is not None)
-        if num_pieces <= 8:      # Very late endgame
-            depth = 6
-        elif num_pieces <= 14:   # Endgame
-            depth = 5
-        elif num_pieces <= 20:   # Late middlegame
-            depth = 4
-        
+        # First, ensure we have a fallback move
         moves = self._get_all_valid_moves_color(state, 'black')
-        if not moves:
-            return None
-            
-        moves = self.order_moves(state, moves, 'black')
+        if moves:
+            # Always select one move as fallback in case algorithm times out
+            best_move = moves[0]  # Simple fallback
+        else:
+            return None  # No valid moves at all
         
-        # Start iterative deepening with a time cutoff
+        # Use higher depth for hard difficulty adjusted by board complexity
+        depth = 3  # Reduced default depth to avoid timeouts
+        num_pieces = sum(1 for p in state['black_pieces'] if p is not None) + sum(1 for p in state['white_pieces'] if p is not None)
+        
+        if num_pieces <= 6:  # Very late endgame
+            depth = 5
+        elif num_pieces <= 10:  # Endgame
+            depth = 4
+        elif num_pieces <= 20:  # Middlegame
+            depth = 3
+        
+        # First, filter out any moves that would expose our king
+        safe_moves = []
+        for piece_idx, move, from_pos in moves:
+            try:
+                sim_state = self.fast_simulate_move(state, piece_idx, move, 'black')
+                if not self.is_king_vulnerable(sim_state, 'black'):
+                    safe_moves.append((piece_idx, move, from_pos))
+            except Exception:
+                continue  # Skip this move if simulation fails
+        
+        # If we have safe moves, use only those. Otherwise use original moves (better than not moving)
+        if safe_moves:
+            moves = safe_moves
+            # Update fallback to a safe move
+            best_move = moves[0]
+        
+        # Order moves to improve search efficiency
+        try:
+            moves = self.order_moves(state, moves, 'black')
+            best_move = moves[0]  # Best ordered move as fallback
+        except Exception:
+            pass  # Keep original moves if ordering fails
+        
+        # Use iterative deepening with strict time control
         start_time = time.time()
-        time_limit = self.time_limits.get(self.difficulty, 15.0)
+        time_limit = self.time_limits.get(self.difficulty, 3.0)
         
-        for current_depth in range(2, depth + 1):
-            # Check time before starting this depth iteration
-            if time.time() - start_time > time_limit:
+        # Set a hard cutoff at 80% of available time
+        hard_time_limit = time_limit * 0.8
+        
+        # Use incrementally deeper searches
+        for current_depth in range(1, depth + 1):
+            # Check time before starting this depth
+            if time.time() - start_time > hard_time_limit:
                 break
+                
             iter_best_move = None
             iter_best_score = float('-inf')
+            
+            # Process each move with frequent time checks
+            move_counter = 0
             for piece_idx, move, from_pos in moves:
-                if time.time() - start_time > time_limit:
+                move_counter += 1
+                
+                # Check time every few moves
+                if move_counter % 2 == 0 and time.time() - start_time > hard_time_limit:
                     break
-                # Use fast_simulate_move instead of simulate_move
-                sim_state = self.fast_simulate_move(state, piece_idx, move, 'black')
-                score = self.minimax(sim_state, current_depth, float('-inf'), float('inf'), False)
-                if score > iter_best_score:
-                    iter_best_score = score
-                    iter_best_move = (piece_idx, move, from_pos)
+                    
+                try:
+                    # Simulate the move
+                    sim_state = self.fast_simulate_move(state, piece_idx, move, 'black')
+                    
+                    # Use a shorter search horizon for minimax
+                    minimax_timeout = (time_limit - (time.time() - start_time)) * 0.7
+                    if minimax_timeout <= 0:
+                        break
+                    
+                    # Start with current depth and reduce if needed
+                    effective_depth = current_depth
+                    if move_counter > 10 and time.time() - start_time > time_limit * 0.6:
+                        effective_depth = max(1, current_depth - 1)  # Reduce depth for later moves
+                    
+                    # Search with minimax
+                    score = self.minimax(sim_state, effective_depth, float('-inf'), float('inf'), False)
+                    
+                    # Keep track of best move
+                    if score > iter_best_score:
+                        iter_best_score = score
+                        iter_best_move = (piece_idx, move, from_pos)
+                except Exception:
+                    continue  # Skip this move if evaluation fails
+            
+            # Update best move if we found something better
             if iter_best_move:
                 best_move = iter_best_move
                 best_score = iter_best_score
-        if best_move is None and moves:
-            return self._get_medium_move(state, moves)
+        
+        # Return the best move we found, or a safe default
         return best_move
     
     def _get_grandmaster_move(self, state):
